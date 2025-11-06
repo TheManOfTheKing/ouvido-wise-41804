@@ -4,11 +4,14 @@ import { ManifestacaoHeader } from "./components/ManifestacaoHeader";
 import { Timeline } from "./components/Timeline";
 import { ActionPanel } from "./components/ActionPanel";
 import { SLAAlert } from "./components/SLAAlert";
+import { PlanosAcaoPanel } from "./components/PlanosAcaoPanel";
+import { ComunicacoesPanel } from "./components/ComunicacoesPanel";
+import { AnexosPanel } from "./components/AnexosPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, User, Building2, FileText, Paperclip } from "lucide-react";
+import { AlertCircle, User, Building2, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function ManifestacaoDetalhes() {
@@ -67,9 +70,17 @@ export default function ManifestacaoDetalhes() {
             />
             
             <Tabs defaultValue="detalhes" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
                 <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                <TabsTrigger value="planos">
+                  Planos
+                  {manifestacao.planos_acao?.length > 0 && (
+                    <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
+                      {manifestacao.planos_acao.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="comunicacoes">
                   Comunicações
                   {manifestacao.comunicacoes?.length > 0 && (
@@ -215,37 +226,18 @@ export default function ManifestacaoDetalhes() {
                 <Timeline manifestacao={manifestacao} />
               </TabsContent>
 
+              <TabsContent value="planos">
+                <PlanosAcaoPanel
+                  manifestacaoId={manifestacao.id}
+                  planos={manifestacao.planos_acao || []}
+                />
+              </TabsContent>
+
               <TabsContent value="comunicacoes">
-                <Card>
-                  <CardContent className="p-6">
-                    {manifestacao.comunicacoes && manifestacao.comunicacoes.length > 0 ? (
-                      <div className="space-y-4">
-                        {manifestacao.comunicacoes.map((com: any) => (
-                          <div key={com.id} className="border-b pb-4 last:border-0">
-                            <div className="flex justify-between items-start mb-2">
-                              <h4 className="font-semibold text-sm">
-                                {com.assunto || com.tipo}
-                              </h4>
-                              <Badge variant={com.interno ? "secondary" : "default"}>
-                                {com.interno ? "Interno" : "Externo"}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground mb-2">
-                              {com.mensagem}
-                            </p>
-                            <div className="text-xs text-muted-foreground">
-                              {com.usuario?.nome} • {new Date(com.data_envio).toLocaleString("pt-BR")}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-center text-muted-foreground py-8">
-                        Nenhuma comunicação registrada
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
+                <ComunicacoesPanel
+                  manifestacaoId={manifestacao.id}
+                  comunicacoes={manifestacao.comunicacoes || []}
+                />
               </TabsContent>
 
               <TabsContent value="encaminhamentos">
@@ -297,34 +289,10 @@ export default function ManifestacaoDetalhes() {
               </TabsContent>
 
               <TabsContent value="anexos">
-                <Card>
-                  <CardContent className="p-6">
-                    {manifestacao.anexos && manifestacao.anexos.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {manifestacao.anexos.map((anexo: any) => (
-                          <div
-                            key={anexo.id}
-                            className="border rounded-lg p-4 flex items-start gap-3"
-                          >
-                            <Paperclip className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">
-                                {anexo.nome_original}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {anexo.tipo_arquivo} • {(anexo.tamanho / 1024).toFixed(2)} KB
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-center text-muted-foreground py-8">
-                        Nenhum anexo
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
+                <AnexosPanel
+                  manifestacaoId={manifestacao.id}
+                  anexos={manifestacao.anexos || []}
+                />
               </TabsContent>
             </Tabs>
           </div>

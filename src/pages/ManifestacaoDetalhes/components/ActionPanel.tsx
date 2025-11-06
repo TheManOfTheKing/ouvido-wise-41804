@@ -9,9 +9,11 @@ import {
   Trash2,
   FileText,
   AlertTriangle,
+  Send,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { EncaminharModal } from "./EncaminharModal";
+import { RespostaManifestanteModal } from "./RespostaManifestanteModal";
 
 interface ActionPanelProps {
   manifestacao: any;
@@ -20,6 +22,7 @@ interface ActionPanelProps {
 export function ActionPanel({ manifestacao }: ActionPanelProps) {
   const { isAdmin, isOuvidor, isAssistente, canViewAll } = usePermissions();
   const [encaminharModalOpen, setEncaminharModalOpen] = useState(false);
+  const [respostaModalOpen, setRespostaModalOpen] = useState(false);
   
   const canEdit = canViewAll || manifestacao.status === "NOVA" || manifestacao.status === "EM_ANALISE";
   const canForward = canViewAll || isAssistente;
@@ -58,14 +61,20 @@ export function ActionPanel({ manifestacao }: ActionPanelProps) {
               )}
 
             {canRespond && manifestacao.status !== "RESPONDIDA" && (
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Responder
+              <Button 
+                variant="outline" 
+                className="w-full justify-start" 
+                size="sm"
+                onClick={() => setRespostaModalOpen(true)}
+                disabled={!manifestacao.manifestante?.email}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                Responder Manifestante
               </Button>
             )}
 
             <Button variant="outline" className="w-full justify-start" size="sm">
-              <FileText className="mr-2 h-4 w-4" />
+              <MessageSquare className="mr-2 h-4 w-4" />
               Adicionar Comentário
             </Button>
 
@@ -107,6 +116,14 @@ export function ActionPanel({ manifestacao }: ActionPanelProps) {
         onOpenChange={setEncaminharModalOpen}
         manifestacaoId={manifestacao.id}
         isSigilosa={manifestacao.sigilosa}
+      />
+
+      <RespostaManifestanteModal
+        open={respostaModalOpen}
+        onClose={() => setRespostaModalOpen(false)}
+        manifestacaoId={manifestacao.id}
+        protocolo={manifestacao.protocolo}
+        manifestante={manifestacao.manifestante}
       />
     </>
   );

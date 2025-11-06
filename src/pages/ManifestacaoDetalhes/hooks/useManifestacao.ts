@@ -24,7 +24,12 @@ export function useManifestacao(id: string) {
             *,
             usuario:usuarios(id, nome, avatar)
           ),
-          anexos:anexos(*)
+          anexos:anexos(*),
+          planos_acao:planos_acao(
+            *,
+            setor:setores(id, nome, sigla),
+            responsavel:usuarios(id, nome)
+          )
         `
         )
         .eq("id", id)
