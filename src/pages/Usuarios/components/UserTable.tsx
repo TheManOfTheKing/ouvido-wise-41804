@@ -9,10 +9,17 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Power, Loader2 } from "lucide-react";
+import { Edit, Power, Loader2, Trash2 } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { UserFormModal } from "./UserFormModal";
 import { useUsuarios } from "../hooks/useUsuarios";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ConfirmDeleteUserModal } from "./ConfirmDeleteUserModal";
+import { usePermissions } from "@/hooks/usePermissions"; // Import usePermissions
 
 type Usuario = Tables<'usuarios'>;
 
@@ -23,7 +30,9 @@ interface UserTableProps {
 
 export function UserTable({ usuarios = [], isLoading }: UserTableProps) {
   const [editingUser, setEditingUser] = useState<Usuario | null>(null);
+  const [userToDelete, setUserToDelete] = useState<Usuario | null>(null);
   const { toggleAtivo, isToggling } = useUsuarios();
+  const { canManageUsers } = usePermissions(); // Use permissions hook
 
   if (isLoading) {
     return (
@@ -75,21 +84,54 @@ export function UserTable({ usuarios = [], isLoading }: UserTableProps) {
                 <TableCell>{usuario.cargo || '-'}</TableCell>
                 <TableCell>{usuario.telefone || '-'}</TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setEditingUser(usuario)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => toggleAtivo({ id: usuario.id, ativo: !usuario.ativo })}
-                    disabled={isToggling}
-                  >
-                    <Power className="h-4 w-4" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditingUser(usuario)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Editar usuário</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => toggleAtivo({ id: usuario.id, ativo: !usuario.ativo })}
+                        disabled={isToggling}
+                        className={!usuario.ativo ? "text-muted-foreground opacity-70" : ""}
+                      >
+                        <Power className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{usuario.ativo ? "Desativar usuário" : "Ativar usuário"}</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {canManageUsers && ( // Only show delete button if user has permission
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setUserToDelete(usuario)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Excluir usuário</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -109,6 +151,15 @@ export function UserTable({ usuarios = [], isLoading }: UserTableProps) {
         onClose={() => setEditingUser(null)}
         usuario={editingUser}
       />
+
+      {userToDelete && (
+        <ConfirmDeleteUserModal
+          open={!!userToDelete}
+          onClose={() => setUserToDelete(null)}
+          userId={userToDelete.id}
+          userName={userToDelete.nome}
+        />
+      )}
     </>
   );
 }
