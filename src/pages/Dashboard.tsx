@@ -12,13 +12,14 @@ import {
   TrendingUp,
   Users,
   AlertCircle,
+  Building2, // Importar o ícone Building2
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AtividadesRecentes } from "@/components/AtividadesRecentes";
 
 export default function Dashboard() {
   const { usuario } = useAuth();
-  const { canManageUsers } = usePermissions();
+  const { canManageUsers, canManageSectors } = usePermissions(); // Adicionar canManageSectors
   const [stats, setStats] = useState({
     total: 0,
     novas: 0,
@@ -144,26 +145,36 @@ export default function Dashboard() {
               </Link>
               
               {canManageUsers && (
-                <>
-                  <Link to="/usuarios">
-                    <Button variant="outline" className="w-full h-auto flex-col gap-2 py-4">
-                      <Users className="h-8 w-8 text-primary" />
-                      <div className="text-center">
-                        <div className="font-semibold">Gerenciar Usuários</div>
-                        <div className="text-xs text-muted-foreground">Administrar equipe</div>
-                      </div>
-                    </Button>
-                  </Link>
-                  
+                <Link to="/usuarios">
                   <Button variant="outline" className="w-full h-auto flex-col gap-2 py-4">
-                    <TrendingUp className="h-8 w-8 text-primary" />
+                    <Users className="h-8 w-8 text-primary" />
                     <div className="text-center">
-                      <div className="font-semibold">Relatórios</div>
-                      <div className="text-xs text-muted-foreground">Análises e métricas</div>
+                      <div className="font-semibold">Gerenciar Usuários</div>
+                      <div className="text-xs text-muted-foreground">Administrar equipe</div>
                     </div>
                   </Button>
-                </>
+                </Link>
               )}
+
+              {canManageSectors && ( // Botão para Gerenciar Setores
+                <Link to="/setores">
+                  <Button variant="outline" className="w-full h-auto flex-col gap-2 py-4">
+                    <Building2 className="h-8 w-8 text-primary" />
+                    <div className="text-center">
+                      <div className="font-semibold">Gerenciar Setores</div>
+                      <div className="text-xs text-muted-foreground">Cadastrar e editar</div>
+                    </div>
+                  </Button>
+                </Link>
+              )}
+              
+              <Button variant="outline" className="w-full h-auto flex-col gap-2 py-4">
+                <TrendingUp className="h-8 w-8 text-primary" />
+                <div className="text-center">
+                  <div className="font-semibold">Relatórios</div>
+                  <div className="text-xs text-muted-foreground">Análises e métricas</div>
+                </div>
+              </Button>
             </div>
           </CardContent>
         </Card>

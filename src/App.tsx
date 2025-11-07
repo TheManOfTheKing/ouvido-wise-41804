@@ -13,6 +13,7 @@ import Manifestacoes from "./pages/Manifestacoes";
 import ManifestacaoDetalhes from "./pages/ManifestacaoDetalhes";
 import NotFound from "./pages/NotFound";
 import UsuariosPage from "./pages/Usuarios";
+import SetoresPage from "./pages/Setores"; // Importar a nova página de Setores
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <UsuariosPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/setores" // Nova rota para gestão de setores
+              element={
+                <ProtectedRoute>
+                  <SetoresPage />
                 </ProtectedRoute>
               }
             />
