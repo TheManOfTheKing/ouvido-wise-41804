@@ -110,8 +110,12 @@ export function useSetores() {
     },
     onError: (error) => {
       console.error("Erro ao excluir setor:", error);
+      let errorMessage = "Ocorreu um erro inesperado ao excluir o setor.";
+      if (error.code === '23503') { // Foreign key violation
+        errorMessage = "Não foi possível excluir o setor. Existem usuários, manifestações ou planos de ação associados a ele. Por favor, remova ou reassocie-os antes de tentar novamente.";
+      }
       toast.error("Erro ao excluir setor", {
-        description: error.message || "Ocorreu um erro inesperado.",
+        description: errorMessage,
       });
     },
   });
