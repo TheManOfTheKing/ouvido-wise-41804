@@ -4,7 +4,7 @@ SELECT relname, relrowsecurity FROM pg_class WHERE relname = 'anexos';
 -- 2. Listar todas as políticas RLS para a tabela 'anexos'
 SELECT
     polname AS policy_name,
-    permissive,
+    p.polpermissive AS permissive, -- CORREÇÃO AQUI
     CASE cmd
         WHEN 'r' THEN 'SELECT'
         WHEN 'a' THEN 'INSERT'
