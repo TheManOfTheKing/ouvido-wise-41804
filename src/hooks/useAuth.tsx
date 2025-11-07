@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
-  const [loading, setLoading] = useState(true); // Default to true
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   // Function to fetch user profile
@@ -79,10 +79,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    let isMounted = true; // Flag para evitar atualizações de estado em componentes desmontados
+
+    const getInitialSession = async () => {
+      console.log("[useAuth] getInitialSession: Tentando obter sessão inicial.");
+      try {
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+
+        if (isMounted) {
+          if (error) {
+            console.error("[useAuth] getInitialSession: Erro ao obter sessão inicial:", error);
+            setSession(null);
+            setUser(null);
+            setUsuario(null);
+          } else if (initialSession) {
+            console.log("[useAuth] getInitialSession: Sessão inicial encontrada:", initialSession);
+            setSession(initialSession);
+            setUser(initialSession.user);
+            const fetchedUsuario = await fetchUserProfile(initialSession.user);
+            if (isMounted) {
+              setUsuario(fetchedUsuario);
+            }
+          } else {
+            console.log("[useAuth] getInitialSession: Nenhuma sessão inicial encontrada.");
+            setSession(null);
+            setUser(null);
+            setUsuario(null);
+          }
+        }
+      } catch (err) {
+        console.error("[useAuth] getInitialSession: Erro inesperado ao obter sessão inicial:", err);
+        if (isMounted) {
+          setSession(null);
+          setUser(null);
+          setUsuario(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    getInitialSession(); // Chamar no mount para obter a sessão inicial
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         console.log("[useAuth] onAuthStateChange: Evento:", event, "Sessão:", currentSession);
-        setLoading(true); // Always set loading to true at the start of an auth state change
+        if (!isMounted) return; // Prevenir atualizações de estado se o componente foi desmontado
+
+        setLoading(true); // Definir loading como true para qualquer evento de mudança de estado de autenticação
 
         try {
           setSession(currentSession);
@@ -90,33 +136,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (currentSession?.user) {
             const fetchedUsuario = await fetchUserProfile(currentSession.user);
-            setUsuario(fetchedUsuario);
+            if (isMounted) {
+              setUsuario(fetchedUsuario);
+            }
           } else {
             setUsuario(null);
           }
         } catch (error) {
           console.error("[useAuth] onAuthStateChange: Erro durante a mudança de estado de autenticação:", error);
-          setUsuario(null);
-          setUser(null);
-          setSession(null);
+          if (isMounted) {
+            setUsuario(null);
+            setUser(null);
+            setSession(null);
+          }
         } finally {
-          setLoading(false); // Always stop loading after an auth state change event
+          if (isMounted) {
+            setLoading(false);
+          }
         }
       }
     );
 
-    return () => subscription.unsubscribe();
-  }, []); // Empty dependency array means this runs once on mount
-
-  // This useEffect will be executed whenever the 'usuario' state is updated
-  useEffect(() => {
-    console.log("[useAuth] Estado 'usuario' atualizado:", usuario);
-  }, [usuario]);
+    return () => {
+      isMounted = false; // Limpar flag
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const signOut = async () => {
     console.log("[useAuth] signOut: Saindo do sistema.");
     await supabase.auth.signOut();
-    // Clear states immediately after signOut to reflect changes in UI
+    // Limpar estados imediatamente após signOut para refletir as mudanças na UI
     setUsuario(null);
     setUser(null);
     setSession(null);
