@@ -12,7 +12,7 @@ import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePlanoAcao } from "../hooks/usePlanoAcao";
-import { useSetores } from "../hooks/useSetores";
+import { useSetores } from "@/hooks/useSetores"; // Caminho corrigido
 import { useUsuariosBySetor } from "../hooks/useUsuariosBySetor";
 
 interface PlanoAcaoModalProps {
