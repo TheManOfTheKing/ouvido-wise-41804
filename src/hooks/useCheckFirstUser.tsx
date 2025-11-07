@@ -6,30 +6,31 @@ export function useCheckFirstUser() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const checkFirstUser = async () => {
+      try {
+        // Verificar se existem usuários com perfil 'ADMIN' cadastrados no sistema
+        const { count, error } = await supabase
+          .from("usuarios")
+          .select("id", { count: "exact", head: true })
+          .eq("perfil", "ADMIN"); // Check for ADMIN profiles specifically
+
+        if (error) {
+          console.error("Erro ao verificar primeiro usuário:", error);
+          setIsFirstUser(false);
+        } else {
+          // Se não há usuários ADMIN, então o próximo a se registrar pode ser o primeiro ADMIN
+          setIsFirstUser(count === 0);
+        }
+      } catch (err) {
+        console.error("Erro ao verificar primeiro usuário:", err);
+        setIsFirstUser(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     checkFirstUser();
   }, []);
-
-  const checkFirstUser = async () => {
-    try {
-      // Verificar se existem usuários cadastrados no sistema
-      const { count, error } = await supabase
-        .from("usuarios")
-        .select("*", { count: "exact", head: true });
-
-      if (error) {
-        console.error("Erro ao verificar primeiro usuário:", error);
-        setIsFirstUser(false);
-      } else {
-        // Se não há usuários, então é o primeiro usuário
-        setIsFirstUser(count === 0);
-      }
-    } catch (err) {
-      console.error("Erro ao verificar primeiro usuário:", err);
-      setIsFirstUser(false);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return { isFirstUser, loading };
 }

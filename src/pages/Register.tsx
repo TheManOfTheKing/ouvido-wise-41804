@@ -16,7 +16,7 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [perfil, setPerfil] = useState("ADMIN");
+  const [perfil, setPerfil] = useState("ADMIN"); // Default to ADMIN for potential first user
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -37,6 +37,7 @@ export default function Register() {
 
     setLoading(true);
 
+    // Determine the final profile based on whether it's the first user
     const perfilFinal = isFirstUser ? perfil : "ANALISTA";
     const { error } = await authService.signUp(email, password, nome, perfilFinal);
 
@@ -112,6 +113,7 @@ export default function Register() {
                 </div>
               </div>
 
+              {/* Conditional Profile Selection for First User */}
               {isFirstUser && !checkingFirstUser && (
                 <div className="space-y-2">
                   <Label htmlFor="perfil">Perfil de Acesso</Label>

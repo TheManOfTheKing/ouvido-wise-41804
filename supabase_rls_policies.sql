@@ -168,7 +168,40 @@ AS PERMISSIVE FOR ALL
 TO authenticated
 USING (public.has_role('admin'::public.app_role, auth.uid()));
 
--- RLS Policies para 'usuarios' (CORRIGIDO PARA EVITAR RECURSÃO)
+-- RLS Policies para 'usuarios' (ATUALIZADO para permitir o primeiro ADMIN)
+-- Remove a política antiga de INSERT se existir
+DROP POLICY IF EXISTS "Apenas admins podem criar usuários" ON public.usuarios;
+
+CREATE POLICY "Allow user creation based on role and first user logic" ON public.usuarios
+AS PERMISSIVE FOR INSERT
+TO authenticated
+WITH CHECK (
+    -- Permite se o usuário autenticado já é um admin
+    public.has_role('admin'::public.app_role, auth.uid())
+    OR
+    -- Permite se não há admins no sistema E o novo usuário está se registrando como ADMIN
+    (
+        (SELECT count(*) FROM public.usuarios WHERE perfil = 'ADMIN'::public.perfil_usuario) = 0
+        AND perfil = 'ADMIN'::public.perfil_usuario
+        AND auth_id = auth.uid()
+    )
+    OR
+    -- Permite se não há admins no sistema E o novo usuário está se registrando como OUVIDOR (para o caso de o primeiro admin ser ouvidor)
+    (
+        (SELECT count(*) FROM public.usuarios WHERE perfil = 'ADMIN'::public.perfil_usuario) = 0
+        AND perfil = 'OUVIDOR'::public.perfil_usuario
+        AND auth_id = auth.uid()
+    )
+    OR
+    -- Permite se não há admins no sistema E o novo usuário está se registrando como ANALISTA (padrão para outros usuários)
+    (
+        (SELECT count(*) FROM public.usuarios WHERE perfil = 'ADMIN'::public.perfil_usuario) = 0
+        AND perfil = 'ANALISTA'::public.perfil_usuario
+        AND auth_id = auth.uid()
+    )
+);
+
+
 CREATE POLICY "Admins e Ouvidores podem ver todos usuários" ON public.usuarios
 AS PERMISSIVE FOR SELECT
 TO authenticated
@@ -178,11 +211,6 @@ CREATE POLICY "Usuários podem ver seu próprio perfil" ON public.usuarios
 AS PERMISSIVE FOR SELECT
 TO authenticated
 USING (auth_id = auth.uid());
-
-CREATE POLICY "Apenas admins podem criar usuários" ON public.usuarios
-AS PERMISSIVE FOR INSERT
-TO authenticated
-WITH CHECK (public.has_role('admin'::public.app_role, auth.uid()));
 
 CREATE POLICY "Usuários podem atualizar seu próprio perfil" ON public.usuarios
 AS PERMISSIVE FOR UPDATE
