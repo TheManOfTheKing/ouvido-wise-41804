@@ -619,27 +619,6 @@ export type Database = {
           },
         ]
       }
-      user_roles: {
-        Row: {
-          created_at: string | null
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
       usuarios: {
         Row: {
           ativo: boolean
@@ -744,20 +723,7 @@ export type Database = {
     }
     Functions: {
       gerar_protocolo: { Args: never; Returns: string }
-      has_any_role: {
-        Args: {
-          _roles: Database["public"]["Enums"]["app_role"][]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
+      check_admin_users_exist: { Args: never; Returns: boolean }
     }
     Enums: {
       acao_permissao:
@@ -771,7 +737,6 @@ export type Database = {
         | "CLOSE"
         | "REOPEN"
         | "MANAGE"
-      app_role: "admin" | "ouvidor" | "assistente" | "gestor" | "analista"
       canal_manifestacao:
         | "PORTAL"
         | "EMAIL"
@@ -956,7 +921,6 @@ export const Constants = {
         "REOPEN",
         "MANAGE",
       ],
-      app_role: ["admin", "ouvidor", "assistente", "gestor", "analista"],
       canal_manifestacao: [
         "PORTAL",
         "EMAIL",
