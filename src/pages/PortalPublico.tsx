@@ -51,6 +51,16 @@ export default function PortalPublico() {
       return;
     }
 
+    if (identificacao === "identificado" && !nome) {
+      toast.error("Nome é obrigatório quando se identifica");
+      return;
+    }
+
+    if (identificacao === "identificado" && !email) {
+      toast.error("E-mail é obrigatório quando se identifica");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -92,8 +102,11 @@ export default function PortalPublico() {
           tipo,
           descricao,
           anonima: identificacao === "anonimo",
-          canal: "PORTAL" as const,
-          manifestante_id: manifestanteId
+          canal: "PORTAL",
+          manifestante_id: manifestanteId,
+          data_recebimento: new Date().toISOString(),
+          status: "NOVA",
+          prioridade: "MEDIA"
         } as any)
         .select()
         .single();
