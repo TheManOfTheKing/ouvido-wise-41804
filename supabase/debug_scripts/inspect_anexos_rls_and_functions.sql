@@ -5,15 +5,15 @@ SELECT relname, relrowsecurity FROM pg_class WHERE relname = 'anexos';
 SELECT
     polname AS policy_name,
     p.polpermissive AS permissive,
-    CASE p.polcmd -- CORREÇÃO AQUI: Usar p.polcmd
+    CASE p.polcmd
         WHEN 'r' THEN 'SELECT'
         WHEN 'a' THEN 'INSERT'
         WHEN 'w' THEN 'UPDATE'
         WHEN 'd' THEN 'DELETE'
         WHEN '*' THEN 'ALL'
     END AS command,
-    qual AS using_expression,
-    with_check AS with_check_expression,
+    p.polqual AS using_expression, -- CORREÇÃO AQUI: Usar p.polqual
+    p.polwithcheck AS with_check_expression, -- CORREÇÃO AQUI: Usar p.polwithcheck
     rolname AS roles
 FROM pg_policy p
 JOIN pg_class c ON p.polrelid = c.oid
