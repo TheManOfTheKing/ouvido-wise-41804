@@ -1,7 +1,8 @@
 import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { useDeleteManifestacao } from "../hooks/useDeleteManifestacao";
+import { Loader2 } from "lucide-react";
 
 interface ConfirmDeleteModalProps {
   open: boolean;
@@ -10,17 +11,15 @@ interface ConfirmDeleteModalProps {
 }
 
 export function ConfirmDeleteModal({ open, onClose, manifestacaoId }: ConfirmDeleteModalProps) {
-  const handleDelete = async () => {
-    const { error } = await supabase
-      .from("manifestacoes")
-      .delete()
-      .eq("id", manifestacaoId);
+  const { mutate: deleteManifestacao, isPending } = useDeleteManifestacao();
 
-    if (error) {
-      console.error("Erro ao excluir manifestação:", error.message);
-    } else {
-      onClose();
-    }
+  const handleDelete = async () => {
+    deleteManifestacao(manifestacaoId, {
+      onSuccess: () => {
+        onClose(); // Fecha o modal após o sucesso
+      },
+      // onError é tratado pelo hook, então não precisamos de um callback aqui
+    });
   };
 
   return (
@@ -29,15 +28,16 @@ export function ConfirmDeleteModal({ open, onClose, manifestacaoId }: ConfirmDel
         <DialogHeader>
           <DialogTitle>Confirmar Exclusão</DialogTitle>
         </DialogHeader>
-        <p>Tem certeza de que deseja excluir esta manifestação?</p>
-        <div className="flex justify-end space-x-2 mt-4">
-          <Button variant="outline" onClick={onClose}>
+        <p>Tem certeza de que deseja excluir esta manifestação? Esta ação não pode ser desfeita.</p>
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={onClose} disabled={isPending}>
             Cancelar
           </Button>
-          <Button variant="destructive" onClick={handleDelete}>
+          <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Excluir
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
