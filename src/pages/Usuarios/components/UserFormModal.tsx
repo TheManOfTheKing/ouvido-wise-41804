@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tables } from "@/integrations/supabase/types";
 import { useUsuarios } from "../hooks/useUsuarios";
-import { useSetores } from "@/pages/ManifestacaoDetalhes/hooks/useSetores";
+import { useSetores } from "@/hooks/useSetores"; // Caminho corrigido
 
 type Usuario = Tables<'usuarios'>;
 
