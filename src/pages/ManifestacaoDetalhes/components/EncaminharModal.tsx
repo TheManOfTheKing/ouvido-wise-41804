@@ -27,7 +27,7 @@ import { CalendarIcon, Loader2, ShieldAlert } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useSetores } from "../hooks/useSetores";
+import { useSetores } from "@/hooks/useSetores"; // Caminho corrigido
 import { useUsuariosBySetor } from "../hooks/useUsuariosBySetor";
 import { useEncaminharManifestacao } from "../hooks/useEncaminharManifestacao";
 import { Alert, AlertDescription } from "@/components/ui/alert";
