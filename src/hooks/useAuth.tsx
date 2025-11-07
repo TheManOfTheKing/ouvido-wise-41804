@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext } from "react";
-import { User, Session } from "@supabase/supabase-js";
+import { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Tables } from "@/integrations/supabase/types";
@@ -26,102 +26,89 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Default to true
   const navigate = useNavigate();
 
+  // Function to fetch user profile
+  const fetchUserProfile = async (authUser: User) => {
+    console.log("[useAuth] fetchUserProfile: Iniciando busca do perfil para auth_id:", authUser.id);
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from("usuarios")
+        .select("*")
+        .eq("auth_id", authUser.id)
+        .single();
+
+      if (profileError) {
+        if (profileError.code === 'PGRST116') { // No rows found
+          console.warn("[useAuth] fetchUserProfile: Perfil do usuário não encontrado. Criando novo perfil...");
+          const defaultPerfil = (authUser.user_metadata?.perfil?.toUpperCase()) || "ANALISTA";
+          const defaultName = authUser.user_metadata?.nome || authUser.email!.split('@')[0];
+
+          const { data: newProfile, error: createError } = await supabase
+            .from("usuarios")
+            .insert({
+              auth_id: authUser.id,
+              email: authUser.email!,
+              nome: defaultName,
+              perfil: defaultPerfil,
+              ativo: true,
+              primeiro_acesso: true,
+            })
+            .select("*")
+            .single();
+
+          if (createError) {
+            console.error("[useAuth] fetchUserProfile: Erro ao criar perfil do usuário:", createError);
+            return null;
+          }
+          console.log("[useAuth] fetchUserProfile: Novo perfil criado:", newProfile);
+          return newProfile;
+        } else {
+          console.error("[useAuth] fetchUserProfile: Erro ao buscar perfil do usuário:", profileError);
+          return null;
+        }
+      } else {
+        console.log("[useAuth] fetchUserProfile: Perfil encontrado com sucesso:", profile);
+        return profile;
+      }
+    } catch (error) {
+      console.error("[useAuth] fetchUserProfile: Erro ao carregar perfil do usuário:", error);
+      return null;
+    }
+  };
+
   useEffect(() => {
-    const fetchUserProfile = async (authUser: User) => {
-      console.log("[useAuth] fetchUserProfile: Iniciando busca do perfil para auth_id:", authUser.id);
-      try {
-        // Buscar perfil do usuário na tabela 'usuarios'
-        const { data: profile, error: profileError } = await supabase
-          .from("usuarios")
-          .select("*")
-          .eq("auth_id", authUser.id)
-          .single();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        console.log("[useAuth] onAuthStateChange: Evento:", event, "Sessão:", currentSession);
+        setLoading(true); // Always set loading to true at the start of an auth state change
 
-        if (profileError) {
-          if (profileError.code === 'PGRST116') {
-            // Usuário não encontrado - criar perfil básico
-            console.warn("[useAuth] fetchUserProfile: Perfil do usuário não encontrado. Criando novo perfil...");
-            
-            const defaultPerfil = (authUser.user_metadata?.perfil?.toUpperCase()) || "ANALISTA";
-            const defaultName = authUser.user_metadata?.nome || authUser.email!.split('@')[0];
+        try {
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
 
-            const { data: newProfile, error: createError } = await supabase
-              .from("usuarios")
-              .insert({
-                auth_id: authUser.id,
-                email: authUser.email!,
-                nome: defaultName,
-                perfil: defaultPerfil,
-                ativo: true,
-                primeiro_acesso: true,
-              })
-              .select("*")
-              .single();
-
-            if (createError) {
-              console.error("[useAuth] fetchUserProfile: Erro ao criar perfil do usuário:", createError);
-              setUsuario(null);
-              return;
-            }
-            console.log("[useAuth] fetchUserProfile: Novo perfil criado:", newProfile);
-            setUsuario(newProfile);
+          if (currentSession?.user) {
+            const fetchedUsuario = await fetchUserProfile(currentSession.user);
+            setUsuario(fetchedUsuario);
           } else {
-            console.error("[useAuth] fetchUserProfile: Erro ao buscar perfil do usuário:", profileError);
             setUsuario(null);
           }
-        } else {
-          // Perfil encontrado com sucesso
-          console.log("[useAuth] fetchUserProfile: Perfil encontrado com sucesso:", profile);
-          setUsuario(profile);
-        }
-      } catch (error) {
-        console.error("[useAuth] fetchUserProfile: Erro ao carregar perfil do usuário:", error);
-        setUsuario(null);
-      }
-    };
-
-    // Listener de mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("[useAuth] onAuthStateChange: Evento:", event, "Sessão:", session);
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(true);
-
-        if (session?.user) {
-          await fetchUserProfile(session.user);
-        } else {
+        } catch (error) {
+          console.error("[useAuth] onAuthStateChange: Erro durante a mudança de estado de autenticação:", error);
           setUsuario(null);
+          setUser(null);
+          setSession(null);
+        } finally {
+          setLoading(false); // Always stop loading after an auth state change event
         }
-        
-        setLoading(false);
-        // Nota: o console.log aqui pode mostrar um estado 'stale' de 'usuario' devido ao closure.
-        // O useEffect separado abaixo é mais preciso para observar mudanças em 'usuario'.
       }
     );
-
-    // Verificação inicial da sessão
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log("[useAuth] getSession: Sessão inicial:", session);
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        await fetchUserProfile(session.user);
-      }
-      
-      setLoading(false);
-      // Nota: o console.log aqui pode mostrar um estado 'stale' de 'usuario' devido ao closure.
-      // O useEffect separado abaixo é mais preciso para observar mudanças em 'usuario'.
-    });
 
     return () => subscription.unsubscribe();
   }, []); // Empty dependency array means this runs once on mount
 
-  // Este useEffect será executado sempre que o estado 'usuario' for atualizado
+  // This useEffect will be executed whenever the 'usuario' state is updated
   useEffect(() => {
     console.log("[useAuth] Estado 'usuario' atualizado:", usuario);
   }, [usuario]);
@@ -129,7 +116,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     console.log("[useAuth] signOut: Saindo do sistema.");
     await supabase.auth.signOut();
+    // Clear states immediately after signOut to reflect changes in UI
     setUsuario(null);
+    setUser(null);
+    setSession(null);
     navigate("/login");
   };
 
