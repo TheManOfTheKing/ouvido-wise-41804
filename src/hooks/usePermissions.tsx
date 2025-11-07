@@ -1,32 +1,36 @@
-import { useAuth } from "@/hooks/useAuth";
+import { useMemo } from 'react';
+import { useAuth } from './useAuth';
 
-export function usePermissions() {
+export const usePermissions = () => {
   const { usuario } = useAuth();
-  const roles = usuario?.roles || [];
 
-  const hasRole = (role: string) => roles.includes(role);
-  
-  const hasAnyRole = (...checkRoles: string[]) => 
-    checkRoles.some(role => roles.includes(role));
-  
-  const isAdmin = hasRole('admin');
-  const isOuvidor = hasRole('ouvidor');
-  const isGestor = hasRole('gestor');
-  const isAssistente = hasRole('assistente');
-  const isAnalista = hasRole('analista');
-  const canViewAll = hasAnyRole('admin', 'ouvidor');
-  const canManageUsers = hasAnyRole('admin', 'ouvidor');
+  const permissions = useMemo(() => {
+    if (!usuario?.perfil || !usuario?.ativo) {
+      return {
+        canViewDashboard: false,
+        canManageUsers: false,
+        canManageSectors: false,
+        canManageManifestations: false,
+        canViewReports: false,
+        canViewAuditLogs: false,
+        isAdmin: false,
+        isOuvidor: false,
+      };
+    }
 
-  return {
-    roles,
-    hasRole,
-    hasAnyRole,
-    isAdmin,
-    isOuvidor,
-    isGestor,
-    isAssistente,
-    isAnalista,
-    canViewAll,
-    canManageUsers
-  };
-}
+    const perfil = usuario.perfil;
+
+    return {
+      canViewDashboard: true,
+      canManageUsers: perfil === 'ADMIN',
+      canManageSectors: perfil === 'ADMIN',
+      canManageManifestations: ['ADMIN', 'OUVIDOR', 'GESTOR'].includes(perfil),
+      canViewReports: ['ADMIN', 'OUVIDOR', 'GESTOR', 'COORDENADOR'].includes(perfil),
+      canViewAuditLogs: perfil === 'ADMIN',
+      isAdmin: perfil === 'ADMIN',
+      isOuvidor: perfil === 'OUVIDOR',
+    };
+  }, [usuario]);
+
+  return permissions;
+};
