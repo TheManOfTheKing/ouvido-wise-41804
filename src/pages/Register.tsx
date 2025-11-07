@@ -68,7 +68,7 @@ export default function Register() {
             <CardDescription>Preencha os dados para se registrar</CardDescription>
           </CardHeader>
           <CardContent>
-            {isFirstUser && (
+            {isFirstUser && !checkingFirstUser && (
               <Alert className="mb-4 border-primary/50 bg-primary/5">
                 <Shield className="h-4 w-4" />
                 <AlertDescription>
@@ -112,7 +112,7 @@ export default function Register() {
                 </div>
               </div>
 
-              {isFirstUser && (
+              {isFirstUser && !checkingFirstUser && (
                 <div className="space-y-2">
                   <Label htmlFor="perfil">Perfil de Acesso</Label>
                   <Select value={perfil} onValueChange={setPerfil}>
