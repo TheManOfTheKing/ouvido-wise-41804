@@ -8,21 +8,20 @@ export function useCheckFirstUser() {
   useEffect(() => {
     const checkFirstUser = async () => {
       try {
-        // Verificar se existem usuários com perfil 'ADMIN' cadastrados no sistema
-        const { count, error } = await supabase
-          .from("usuarios")
-          .select("id", { count: "exact", head: true })
-          .eq("perfil", "ADMIN"); // Check for ADMIN profiles specifically
+        // Chamar a função RPC para verificar a existência de usuários ADMIN
+        const { data, error } = await supabase.rpc("check_admin_users_exist");
 
         if (error) {
-          console.error("Erro ao verificar primeiro usuário:", error);
-          setIsFirstUser(false);
+          console.error("Erro ao chamar RPC check_admin_users_exist:", error);
+          // Em caso de erro, assumir que não é o primeiro usuário por segurança
+          setIsFirstUser(false); 
         } else {
-          // Se não há usuários ADMIN, então o próximo a se registrar pode ser o primeiro ADMIN
-          setIsFirstUser(count === 0);
+          // A função RPC retorna TRUE se ADMINs existirem, FALSE caso contrário.
+          // Queremos que isFirstUser seja TRUE se NÃO existirem ADMINs.
+          setIsFirstUser(!data); 
         }
       } catch (err) {
-        console.error("Erro ao verificar primeiro usuário:", err);
+        console.error("Erro inesperado ao verificar primeiro usuário:", err);
         setIsFirstUser(false);
       } finally {
         setLoading(false);
