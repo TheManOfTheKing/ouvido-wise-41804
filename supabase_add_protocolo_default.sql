@@ -1,0 +1,1 @@
+ALTER TABLE public.manifestacoes ALTER COLUMN protocolo SET DEFAULT '';
