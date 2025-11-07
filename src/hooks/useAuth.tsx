@@ -2,17 +2,10 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { Enums, Tables } from "@/integrations/supabase/types";
 
-interface Usuario {
-  id: string;
-  auth_id: string;
-  nome: string;
-  email: string;
-  perfil: string;
-  setor_id?: string;
-  ativo: boolean;
-  primeiro_acesso: boolean;
-  roles?: string[];
+interface Usuario extends Tables<'usuarios'> {
+  roles?: Enums<'app_role'>[];
 }
 
 interface AuthContextType {
@@ -39,66 +32,105 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Set up auth state listener FIRST
+    const fetchUserProfile = async (authUser: User) => {
+      let currentProfile: Tables<'usuarios'> | null = null;
+
+      // 1. Fetch user profile from 'usuarios' table
+      const { data: profile, error: profileError } = await supabase
+        .from("usuarios")
+        .select("*")
+        .eq("auth_id", authUser.id)
+        .single();
+
+      if (profileError && profileError.code === 'PGRST116') { // No rows found
+        console.warn("User profile not found in 'usuarios' table. Creating a basic one.");
+        
+        // Use user_metadata for default values if available
+        const defaultPerfil: Enums<'perfil_usuario'> = (authUser.user_metadata?.perfil?.toUpperCase() as Enums<'perfil_usuario'>) || "ANALISTA";
+        const defaultName = authUser.user_metadata?.nome || authUser.email!.split('@')[0];
+
+        // If profile doesn't exist, create a basic one
+        const { data: newProfile, error: createError } = await supabase
+          .from("usuarios")
+          .insert({
+            auth_id: authUser.id,
+            email: authUser.email!,
+            nome: defaultName,
+            perfil: defaultPerfil,
+            ativo: true,
+            primeiro_acesso: true,
+          })
+          .select("*")
+          .single();
+
+        if (createError) {
+          console.error("Error creating basic user profile:", createError);
+          throw createError;
+        }
+        currentProfile = newProfile;
+      } else if (profileError) {
+        console.error("Error fetching user profile:", profileError);
+        throw profileError;
+      } else {
+        currentProfile = profile;
+      }
+
+      // 2. Fetch user roles from 'user_roles' table
+      const { data: userRoles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", authUser.id);
+
+      if (rolesError) {
+        console.error("Error fetching user roles:", rolesError);
+        throw rolesError;
+      }
+
+      // 3. Set the combined user object
+      if (currentProfile) {
+        setUsuario({
+          ...currentProfile,
+          roles: userRoles?.map(r => r.role) || []
+        });
+      } else {
+        setUsuario(null);
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        setLoading(true); // Set loading true while fetching profile
 
-        // Fetch user profile if logged in
         if (session?.user) {
-          setTimeout(async () => {
-            const { data: profile } = await supabase
-              .from("usuarios")
-              .select("*")
-              .eq("auth_id", session.user.id)
-              .single();
-            
-            // Fetch user roles from user_roles table
-            const { data: userRoles } = await supabase
-              .from("user_roles")
-              .select("role")
-              .eq("user_id", session.user.id);
-            
-            setUsuario({
-              ...profile,
-              roles: userRoles?.map(r => r.role) || []
-            });
-          }, 0);
+          try {
+            await fetchUserProfile(session.user);
+          } catch (error) {
+            console.error("Failed to load user profile or roles:", error);
+            setUsuario(null);
+          }
         } else {
           setUsuario(null);
         }
-
         setLoading(false);
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Initial session check
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        Promise.all([
-          supabase
-            .from("usuarios")
-            .select("*")
-            .eq("auth_id", session.user.id)
-            .single(),
-          supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", session.user.id)
-        ]).then(([{ data: profile }, { data: userRoles }]) => {
-          setUsuario({
-            ...profile,
-            roles: userRoles?.map(r => r.role) || []
-          });
-          setLoading(false);
-        });
-      } else {
-        setLoading(false);
+        try {
+          await fetchUserProfile(session.user);
+        } catch (error) {
+          console.error("Failed initial load of user profile or roles:", error);
+          setUsuario(null);
+        }
       }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
