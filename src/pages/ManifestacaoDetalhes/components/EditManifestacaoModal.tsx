@@ -97,6 +97,9 @@ export function EditManifestacaoModal({ open, onClose, manifestacao }: EditManif
   }, [manifestacao, form]);
 
   const onSubmit = (data: EditManifestacaoFormData) => {
+    console.log("onSubmit called with data:", data);
+    console.log("Form errors:", form.formState.errors); // Log form errors
+
     editarManifestacao(
       {
         id: manifestacao.id,
@@ -105,8 +108,13 @@ export function EditManifestacaoModal({ open, onClose, manifestacao }: EditManif
       },
       {
         onSuccess: () => {
+          console.log("Mutation successful, closing modal.");
           onClose();
         },
+        onError: (error) => {
+          console.error("Mutation failed in onSubmit callback:", error);
+          // The useEditarManifestacao hook already handles toast.error, but this is for extra debugging
+        }
       }
     );
   };
