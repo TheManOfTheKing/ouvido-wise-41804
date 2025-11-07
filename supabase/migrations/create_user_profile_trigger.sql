@@ -1,13 +1,16 @@
--- 1. Cria a função que será executada pelo trigger
+-- 1. Cria/Atualiza a função que será executada pelo trigger
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.usuarios (auth_id, email, nome, perfil)
+  INSERT INTO public.usuarios (id, auth_id, email, nome, perfil, ativo, primeiro_acesso)
   VALUES (
-    NEW.id,
+    NEW.id, -- Usa o ID do usuário de auth.users como PK para a tabela de perfis
+    NEW.id, -- Também usa o ID do usuário de auth.users como auth_id
     NEW.email,
     NEW.raw_user_meta_data->>'nome',
-    (NEW.raw_user_meta_data->>'perfil')::public.perfil_usuario
+    (NEW.raw_user_meta_data->>'perfil')::public.perfil_usuario,
+    TRUE, -- Define 'ativo' como TRUE por padrão
+    TRUE  -- Define 'primeiro_acesso' como TRUE por padrão
   );
   RETURN NEW;
 END;
