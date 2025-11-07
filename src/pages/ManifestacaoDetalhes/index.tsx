@@ -11,8 +11,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, User, Building2, FileText } from "lucide-react";
+import { AlertCircle, User, Building2, FileText, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function ManifestacaoDetalhes() {
   const { id } = useParams<{ id: string }>();
@@ -55,6 +57,28 @@ export default function ManifestacaoDetalhes() {
   }
 
   const isAnonima = manifestacao.anonima || manifestacao.sigilosa;
+
+  const canalLabels: Record<string, string> = {
+    PORTAL: "Portal Web",
+    EMAIL: "E-mail",
+    TELEFONE: "Telefone",
+    PRESENCIAL: "Presencial",
+    CARTA: "Carta",
+    WHATSAPP: "WhatsApp",
+    OUTROS: "Outros",
+  };
+
+  const sentimentoLabels: Record<string, string> = {
+    POSITIVO: "Positivo",
+    NEUTRO: "Neutro",
+    NEGATIVO: "Negativo",
+  };
+
+  const sentimentoColors: Record<string, string> = {
+    POSITIVO: "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
+    NEUTRO: "bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20",
+    NEGATIVO: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20",
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -137,6 +161,57 @@ export default function ManifestacaoDetalhes() {
                         </div>
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Info className="h-5 w-5" />
+                      Informações Gerais
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Canal de Entrada</p>
+                        <p className="font-medium">{canalLabels[manifestacao.canal] || manifestacao.canal}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Data de Recebimento</p>
+                        <p className="font-medium">
+                          {format(new Date(manifestacao.data_recebimento), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      </div>
+                      {manifestacao.data_encerramento && (
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Data de Encerramento</p>
+                          <p className="font-medium">
+                            {format(new Date(manifestacao.data_encerramento), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                          </p>
+                        </div>
+                      )}
+                      {manifestacao.tempo_resolucao !== null && (
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Tempo de Resolução</p>
+                          <p className="font-medium">{manifestacao.tempo_resolucao} dia(s)</p>
+                        </div>
+                      )}
+                      {manifestacao.tempo_resposta !== null && (
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Tempo de Resposta</p>
+                          <p className="font-medium">{manifestacao.tempo_resposta} dia(s)</p>
+                        </div>
+                      )}
+                      {manifestacao.sentimento && (
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Sentimento</p>
+                          <Badge variant="outline" className={sentimentoColors[manifestacao.sentimento]}>
+                            {sentimentoLabels[manifestacao.sentimento]}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
 
