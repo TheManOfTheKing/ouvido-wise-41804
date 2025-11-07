@@ -1,62 +1,66 @@
--- Desativar o trigger temporariamente se ele estiver ativo e causando problemas
--- DROP TRIGGER IF EXISTS set_protocolo_on_manifestacao ON public.manifestacoes;
+-- 1. Remove o trigger existente (se houver)
+DROP TRIGGER IF EXISTS set_protocolo_manifestacoes ON public.manifestacoes;
+DROP TRIGGER IF EXISTS set_protocolo ON public.manifestacoes; -- Adicionado para cobrir um nome de trigger alternativo
 
--- 1. Remover o trigger existente (se houver)
-DROP TRIGGER IF EXISTS set_protocolo_on_manifestacao ON public.manifestacoes;
+-- 2. Remove a função existente com CASCADE para remover quaisquer dependências
+DROP FUNCTION IF EXISTS public.gerar_protocolo() CASCADE;
+DROP FUNCTION IF EXISTS public.set_manifestacao_protocolo_trigger_func() CASCADE; -- Adicionado para cobrir um nome de função alternativo
 
--- 2. Remover a função de trigger (se houver)
-DROP FUNCTION IF EXISTS public.set_manifestacao_protocolo_trigger_func();
+-- 3. Recria a tabela protocolo_sequencial se ela não existir
+CREATE TABLE IF NOT EXISTS public.protocolo_sequencial (
+    ano text NOT NULL,
+    sequencial integer NOT NULL,
+    CONSTRAINT protocolo_sequencial_pkey PRIMARY KEY (ano)
+);
 
--- 3. Remover a função gerar_protocolo (se houver)
-DROP FUNCTION IF EXISTS public.gerar_protocolo();
+-- 4. Insere o ano atual se não existir, começando o sequencial em 0
+INSERT INTO public.protocolo_sequencial (ano, sequencial)
+VALUES (EXTRACT(YEAR FROM CURRENT_DATE)::text, 0)
+ON CONFLICT (ano) DO NOTHING;
 
--- 4. Recriar a função para gerar o protocolo
+-- 5. Recria a função para gerar o protocolo
 CREATE OR REPLACE FUNCTION public.gerar_protocolo()
-RETURNS text
-LANGUAGE plpgsql
-AS $function$
+RETURNS TRIGGER AS $$
 DECLARE
-    v_ano TEXT;
-    v_sequencial INT;
-    v_protocolo TEXT;
+    current_year TEXT;
+    next_sequencial INT;
 BEGIN
-    v_ano := TO_CHAR(CURRENT_DATE, 'YYYY');
+    current_year := EXTRACT(YEAR FROM NEW.data_recebimento)::text;
 
-    -- Bloqueia a tabela para evitar condições de corrida
-    LOCK TABLE public.manifestacoes IN EXCLUSIVE MODE;
+    -- Garante que o registro para o ano atual exista
+    INSERT INTO public.protocolo_sequencial (ano, sequencial)
+    VALUES (current_year, 0)
+    ON CONFLICT (ano) DO NOTHING;
 
-    -- Obtém o último sequencial para o ano atual
-    SELECT COALESCE(MAX(SUBSTRING(protocolo FROM 6 FOR 6)::INT), 0)
-    INTO v_sequencial
-    FROM public.manifestacoes
-    WHERE SUBSTRING(protocolo FROM 1 FOR 4) = v_ano;
-
-    v_sequencial := v_sequencial + 1;
+    -- Incrementa o sequencial para o ano atual
+    UPDATE public.protocolo_sequencial
+    SET sequencial = sequencial + 1
+    WHERE ano = current_year
+    RETURNING sequencial INTO next_sequencial;
 
     -- Formata o protocolo
-    v_protocolo := 'OUV-' || v_ano || '-' || LPAD(v_sequencial::TEXT, 6, '0');
-
-    RETURN v_protocolo;
-END;
-$function$;
-
--- 5. Recriar a função de trigger que chama gerar_protocolo
-CREATE OR REPLACE FUNCTION public.set_manifestacao_protocolo_trigger_func()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $function$
-BEGIN
-    IF NEW.protocolo IS NULL OR NEW.protocolo = '' THEN
-        NEW.protocolo := public.gerar_protocolo();
-    END IF;
+    NEW.protocolo := 'OUV-' || current_year || '-' || LPAD(next_sequencial::text, 6, '0');
     RETURN NEW;
 END;
-$function$;
+$$ LANGUAGE plpgsql;
 
--- 6. Recriar o trigger para atribuir o protocolo antes da inserção
-CREATE OR REPLACE TRIGGER set_protocolo_on_manifestacao
+-- 6. Recria o trigger para chamar a função antes de inserir uma nova manifestação
+CREATE OR REPLACE TRIGGER set_protocolo_manifestacoes
 BEFORE INSERT ON public.manifestacoes
-FOR EACH ROW EXECUTE FUNCTION public.set_manifestacao_protocolo_trigger_func();
+FOR EACH ROW
+EXECUTE FUNCTION public.gerar_protocolo();
 
--- 7. Garantir que a coluna 'protocolo' não tenha um valor DEFAULT
-ALTER TABLE public.manifestacoes ALTER COLUMN protocolo DROP DEFAULT;
+-- 7. Adiciona/Atualiza valores padrão para colunas na tabela 'manifestacoes'
+-- Isso garante que, mesmo que o trigger falhe por algum motivo, a coluna não seja nula.
+-- O trigger ainda será responsável por preencher o valor correto para 'protocolo'.
+ALTER TABLE public.manifestacoes ALTER COLUMN protocolo DROP DEFAULT; -- Remove default temporário se existir
+ALTER TABLE public.manifestacoes ALTER COLUMN protocolo SET DEFAULT 'TEMP-PROTOCOL'; -- Adiciona um default temporário para segurança
+
+ALTER TABLE public.manifestacoes ALTER COLUMN data_recebimento SET DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.manifestacoes ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.manifestacoes ALTER COLUMN updated_at SET DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.manifestacoes ALTER COLUMN status SET DEFAULT 'NOVA';
+ALTER TABLE public.manifestacoes ALTER COLUMN prioridade SET DEFAULT 'MEDIA';
+ALTER TABLE public.manifestacoes ALTER COLUMN anonima SET DEFAULT FALSE;
+ALTER TABLE public.manifestacoes ALTER COLUMN sigilosa SET DEFAULT FALSE;
+ALTER TABLE public.manifestacoes ALTER COLUMN canal SET DEFAULT 'PORTAL';
