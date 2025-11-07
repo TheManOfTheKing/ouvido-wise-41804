@@ -35,9 +35,9 @@ const userFormSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("Email inválido"),
   perfil: z.enum(["ADMIN", "OUVIDOR", "GESTOR", "ASSISTENTE", "ANALISTA", "CONSULTA"]),
-  setor_id: z.string().optional(),
+  setor_id: z.string().optional().nullable(), // Adicionado .nullable() para permitir null
   cargo: z.string().min(1, "Cargo é obrigatório"),
-  telefone: z.string().optional(),
+  telefone: z.string().optional().nullable(), // Adicionado .nullable() para permitir null
 });
 
 type UserFormData = z.infer<typeof userFormSchema>;
@@ -59,7 +59,8 @@ export function UserFormModal({ open, onClose, usuario }: UserFormModalProps) {
       email: "",
       perfil: "ANALISTA",
       cargo: "",
-      telefone: "",
+      telefone: null, // Definido como null para corresponder ao tipo nullable
+      setor_id: null, // Definido como null para corresponder ao tipo nullable
     },
   });
 
@@ -69,9 +70,9 @@ export function UserFormModal({ open, onClose, usuario }: UserFormModalProps) {
         nome: usuario.nome || "",
         email: usuario.email || "",
         perfil: usuario.perfil,
-        setor_id: usuario.setor_id || undefined,
+        setor_id: usuario.setor_id || null, // Usar null em vez de undefined
         cargo: usuario.cargo || "",
-        telefone: usuario.telefone || "",
+        telefone: usuario.telefone || null, // Usar null em vez de undefined
       });
     } else {
       form.reset({
@@ -79,7 +80,8 @@ export function UserFormModal({ open, onClose, usuario }: UserFormModalProps) {
         email: "",
         perfil: "ANALISTA",
         cargo: "",
-        telefone: "",
+        telefone: null,
+        setor_id: null,
       });
     }
   }, [usuario, form]);
@@ -91,15 +93,14 @@ export function UserFormModal({ open, onClose, usuario }: UserFormModalProps) {
       perfil: formData.perfil,
       cargo: formData.cargo,
       setor_id: formData.setor_id,
-      telefone: formData.telefone || "",
-      auth_id: usuario?.auth_id || "",
-      avatar: usuario?.avatar || "",
+      telefone: formData.telefone,
+      auth_id: usuario?.auth_id || null, // Pode ser null para novos usuários
+      avatar: usuario?.avatar || null,
       primeiro_acesso: usuario?.primeiro_acesso || null,
       ultimo_acesso: usuario?.ultimo_acesso || null,
       ativo: true,
       updated_at: new Date().toISOString(),
-      tema: "light" as const,
-      timezone: "America/Sao_Paulo"
+      // Removidos 'tema' e 'timezone' pois não existem na tabela 'usuarios'
     };
 
     if (usuario) {
@@ -177,7 +178,7 @@ export function UserFormModal({ open, onClose, usuario }: UserFormModalProps) {
                 <FormItem>
                   <FormLabel>Telefone</FormLabel>
                   <FormControl>
-                    <Input placeholder="(00) 00000-0000" {...field} />
+                    <Input placeholder="(00) 00000-0000" {...field} value={field.value || ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -220,7 +221,7 @@ export function UserFormModal({ open, onClose, usuario }: UserFormModalProps) {
                   <FormLabel>Setor</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    defaultValue={field.value || ""} // Usar string vazia para defaultValue de Select
                   >
                     <FormControl>
                       <SelectTrigger>
