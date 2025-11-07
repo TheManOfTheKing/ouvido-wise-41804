@@ -22,14 +22,17 @@ import {
   LayoutList,
   ChevronLeft,
   ChevronRight,
+  ArrowLeft,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Manifestacoes() {
   const { usuario } = useAuth();
-  const { canViewAll } = usePermissions();
+  const navigate = useNavigate();
+  const { isAdmin } = usePermissions();
 
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [busca, setBusca] = useState("");
@@ -93,6 +96,15 @@ export default function Manifestacoes() {
   return (
     <AppLayout>
       <div className="container mx-auto px-4 py-6">
+        <Button
+          variant="ghost"
+          className="mb-6"
+          onClick={() => navigate("/dashboard")}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Voltar
+        </Button>
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar de Filtros - Desktop */}
           <aside className="hidden lg:block">

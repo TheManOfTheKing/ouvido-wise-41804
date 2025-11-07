@@ -14,19 +14,25 @@ import {
 import { usePermissions } from "@/hooks/usePermissions";
 import { EncaminharModal } from "./EncaminharModal";
 import { RespostaManifestanteModal } from "./RespostaManifestanteModal";
+import { EditManifestacaoModal } from "./EditManifestacaoModal";
+import { AdicionarComentarioModal } from "./AdicionarComentarioModal";
+import { ConfirmDeleteModal } from "./ConfirmDeleteModal";
 
 interface ActionPanelProps {
   manifestacao: any;
 }
 
 export function ActionPanel({ manifestacao }: ActionPanelProps) {
-  const { isAdmin, isOuvidor, isAssistente, canViewAll } = usePermissions();
+  const { isAdmin, isOuvidor } = usePermissions();
   const [encaminharModalOpen, setEncaminharModalOpen] = useState(false);
   const [respostaModalOpen, setRespostaModalOpen] = useState(false);
-  
-  const canEdit = canViewAll || manifestacao.status === "NOVA" || manifestacao.status === "EM_ANALISE";
-  const canForward = canViewAll || isAssistente;
-  const canRespond = canViewAll || isAssistente;
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [comentarioModalOpen, setComentarioModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+
+  const canEdit = isAdmin || isOuvidor || manifestacao.status === "NOVA" || manifestacao.status === "EM_ANALISE";
+  const canForward = isAdmin || isOuvidor;
+  const canRespond = isAdmin || isOuvidor;
   const canClose = (isAdmin || isOuvidor) && manifestacao.status === "RESPONDIDA";
   const canDelete = isAdmin;
 
@@ -42,16 +48,21 @@ export function ActionPanel({ manifestacao }: ActionPanelProps) {
           {!isEncerrada && (
             <>
               {canEdit && (
-                <Button variant="outline" className="w-full justify-start" size="sm">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  size="sm"
+                  onClick={() => setEditModalOpen(true)}
+                >
                   <Edit className="mr-2 h-4 w-4" />
                   Editar
                 </Button>
               )}
 
               {canForward && (
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start" 
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
                   size="sm"
                   onClick={() => setEncaminharModalOpen(true)}
                 >
@@ -60,54 +71,60 @@ export function ActionPanel({ manifestacao }: ActionPanelProps) {
                 </Button>
               )}
 
-            {canRespond && manifestacao.status !== "RESPONDIDA" && (
-              <Button 
-                variant="outline" 
-                className="w-full justify-start" 
+              {canRespond && manifestacao.status !== "RESPONDIDA" && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  size="sm"
+                  onClick={() => setRespostaModalOpen(true)}
+                  disabled={!manifestacao.manifestante?.email}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Responder Manifestante
+                </Button>
+              )}
+
+              <Button
+                variant="outline"
+                className="w-full justify-start"
                 size="sm"
-                onClick={() => setRespostaModalOpen(true)}
-                disabled={!manifestacao.manifestante?.email}
+                onClick={() => setComentarioModalOpen(true)}
               >
-                <Send className="mr-2 h-4 w-4" />
-                Responder Manifestante
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Adicionar Comentário
               </Button>
-            )}
 
-            <Button variant="outline" className="w-full justify-start" size="sm">
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Adicionar Comentário
-            </Button>
+              {canClose && (
+                <Button variant="default" className="w-full justify-start" size="sm">
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Encerrar
+                </Button>
+              )}
+            </>
+          )}
 
-            {canClose && (
-              <Button variant="default" className="w-full justify-start" size="sm">
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Encerrar
+          {isEncerrada && (
+            <div className="text-sm text-muted-foreground text-center py-4">
+              <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p>Manifestação encerrada</p>
+              <p className="text-xs mt-1">Não é possível realizar ações</p>
+            </div>
+          )}
+
+          {canDelete && (
+            <>
+              <div className="border-t pt-2 mt-4" />
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+                size="sm"
+                onClick={() => setDeleteModalOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Excluir
               </Button>
-            )}
-          </>
-        )}
-
-        {isEncerrada && (
-          <div className="text-sm text-muted-foreground text-center py-4">
-            <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-            <p>Manifestação encerrada</p>
-            <p className="text-xs mt-1">Não é possível realizar ações</p>
-          </div>
-        )}
-
-        {canDelete && (
-          <>
-            <div className="border-t pt-2 mt-4" />
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
-              size="sm"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Excluir
-            </Button>
-          </>
-        )}
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -125,6 +142,24 @@ export function ActionPanel({ manifestacao }: ActionPanelProps) {
         manifestacaoId={manifestacao.id}
         protocolo={manifestacao.protocolo}
         manifestante={manifestacao.manifestante}
+      />
+
+      <EditManifestacaoModal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        manifestacao={manifestacao}
+      />
+
+      <AdicionarComentarioModal
+        open={comentarioModalOpen}
+        onClose={() => setComentarioModalOpen(false)}
+        manifestacaoId={manifestacao.id}
+      />
+
+      <ConfirmDeleteModal
+        open={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        manifestacaoId={manifestacao.id}
       />
     </>
   );

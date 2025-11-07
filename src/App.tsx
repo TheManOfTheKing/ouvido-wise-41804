@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Manifestacoes from "./pages/Manifestacoes";
 import ManifestacaoDetalhes from "./pages/ManifestacaoDetalhes";
 import NotFound from "./pages/NotFound";
+import UsuariosPage from "./pages/Usuarios";
 
 const queryClient = new QueryClient();
 
@@ -50,7 +51,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route path="/usuarios" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="/usuarios"
+              element={
+                <ProtectedRoute>
+                  <UsuariosPage />
+                </ProtectedRoute>
+              }
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

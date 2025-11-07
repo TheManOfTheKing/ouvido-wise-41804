@@ -14,6 +14,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { AtividadesRecentes } from "@/components/AtividadesRecentes";
 
 export default function Dashboard() {
   const { usuario } = useAuth();
@@ -167,18 +168,10 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Activity Placeholder */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Atividades Recentes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Funcionalidade em desenvolvimento</p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Atividades Recentes */}
+        <div className="mt-8">
+          <AtividadesRecentes />
+        </div>
       </div>
     </AppLayout>
   );
