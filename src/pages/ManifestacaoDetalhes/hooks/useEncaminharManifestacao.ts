@@ -22,11 +22,15 @@ export function useEncaminharManifestacao() {
       // Buscar a manifestação atual completa
       const { data: manifestacao, error: manifestacaoError } = await supabase
         .from("manifestacoes")
-        .select("setor_responsavel_id, sigilosa, protocolo")
+        .select("setor_responsavel_id, sigilosa, protocolo, tipo, anonima")
         .eq("id", data.manifestacaoId)
         .single();
 
       if (manifestacaoError) throw manifestacaoError;
+
+      // Verificar se é uma denúncia ou manifestação sigilosa
+      const isDenuncia = manifestacao.tipo === "DENUNCIA";
+      const precisaAnonimizar = manifestacao.sigilosa || manifestacao.anonima || isDenuncia;
 
       // Criar encaminhamento
       const { error: encaminhamentoError } = await supabase
@@ -58,6 +62,12 @@ export function useEncaminharManifestacao() {
         updateData.prazo_resposta = data.prazo.toISOString();
       }
 
+      // Se for uma denúncia ou manifestação sigilosa/anônima, anonimizar os dados
+      if (precisaAnonimizar) {
+        updateData.manifestante_id = null;
+        updateData.anonima = true;
+      }
+
       const { error: updateError } = await supabase
         .from("manifestacoes")
         .update(updateData)
@@ -67,7 +77,7 @@ export function useEncaminharManifestacao() {
 
       // Criar notificação para o responsável
       if (data.usuarioDestinoId) {
-        const mensagem = manifestacao.sigilosa
+        const mensagem = precisaAnonimizar
           ? `Você recebeu uma manifestação sigilosa (${manifestacao.protocolo}) para análise.`
           : `Você recebeu a manifestação ${manifestacao.protocolo} para análise.`;
 

@@ -37,6 +37,7 @@ interface EncaminharModalProps {
   onOpenChange: (open: boolean) => void;
   manifestacaoId: string;
   isSigilosa: boolean;
+  tipo: string;
 }
 
 export function EncaminharModal({
@@ -44,6 +45,7 @@ export function EncaminharModal({
   onOpenChange,
   manifestacaoId,
   isSigilosa,
+  tipo,
 }: EncaminharModalProps) {
   const [setorDestinoId, setSetorDestinoId] = useState<string>("");
   const [usuarioDestinoId, setUsuarioDestinoId] = useState<string>("");
@@ -53,6 +55,9 @@ export function EncaminharModal({
   const { data: setores, isLoading: isLoadingSetores } = useSetores();
   const { data: usuarios, isLoading: isLoadingUsuarios } = useUsuariosBySetor(setorDestinoId);
   const { mutate: encaminhar, isPending } = useEncaminharManifestacao();
+
+  // Verifica se é uma denúncia
+  const isDenuncia = tipo === "DENUNCIA";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,12 +104,14 @@ export function EncaminharModal({
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {isSigilosa && (
+            {(isSigilosa || isDenuncia) && (
               <Alert>
                 <ShieldAlert className="h-4 w-4" />
                 <AlertDescription>
-                  Esta é uma manifestação sigilosa. Os dados do manifestante serão automaticamente 
-                  anonimizados no encaminhamento para garantir o sigilo.
+                  {isDenuncia 
+                    ? "Esta é uma denúncia. Os dados do manifestante serão automaticamente anonimizados no encaminhamento para garantir o sigilo e proteção do denunciante."
+                    : "Esta é uma manifestação sigilosa. Os dados do manifestante serão automaticamente anonimizados no encaminhamento para garantir o sigilo."
+                  }
                 </AlertDescription>
               </Alert>
             )}

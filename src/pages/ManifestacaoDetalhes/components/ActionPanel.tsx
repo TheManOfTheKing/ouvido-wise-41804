@@ -116,6 +116,7 @@ export function ActionPanel({ manifestacao }: ActionPanelProps) {
         onOpenChange={setEncaminharModalOpen}
         manifestacaoId={manifestacao.id}
         isSigilosa={manifestacao.sigilosa}
+        tipo={manifestacao.tipo}
       />
 
       <RespostaManifestanteModal
