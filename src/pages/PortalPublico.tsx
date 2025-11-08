@@ -333,9 +333,9 @@ export default function PortalPublico() {
                       />
                       <Label htmlFor="lgpd" className="text-sm font-normal cursor-pointer">
                         Li e concordo com a{" "}
-                        <a href="#" className="text-primary underline">
+                        <Link to="/politica-de-privacidade" className="text-primary underline"> {/* Link atualizado */}
                           Política de Privacidade
-                        </a>{" "}
+                        </Link>{" "}
                         e autorizo o tratamento dos meus dados pessoais conforme a LGPD. *
                       </Label>
                     </div>
