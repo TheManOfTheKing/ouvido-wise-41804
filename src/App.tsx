@@ -15,7 +15,18 @@ import NotFound from "./pages/NotFound";
 import UsuariosPage from "./pages/Usuarios";
 import SetoresPage from "./pages/Setores"; // Importar a nova página de Setores
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
+      staleTime: 5 * 60 * 1000, // 5 minutos
+      gcTime: 10 * 60 * 1000,   // 10 minutos
+      retry: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -55,7 +66,7 @@ const App = () => (
             <Route
               path="/usuarios"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute adminOnly>
                   <UsuariosPage />
                 </ProtectedRoute>
               }
@@ -63,7 +74,7 @@ const App = () => (
             <Route
               path="/setores" // Nova rota para gestão de setores
               element={
-                <ProtectedRoute>
+                <ProtectedRoute adminOnly>
                   <SetoresPage />
                 </ProtectedRoute>
               }
