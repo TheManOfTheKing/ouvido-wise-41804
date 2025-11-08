@@ -82,28 +82,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log("[useAuth] useEffect principal executado.");
     let isMounted = true;
 
-    const initialSessionCheck = async () => {
-      console.log("[useAuth] initialSessionCheck: Iniciando verificação de sessão.");
+    const handleAuthEvent = async (event: AuthChangeEvent, currentSession: Session | null) => {
+      console.log(`[useAuth] handleAuthEvent: Evento: ${event}, Sessão:`, currentSession ? 'present' : 'null');
+      if (!isMounted) {
+        console.log("[useAuth] handleAuthEvent: Componente desmontado, ignorando evento.");
+        return;
+      }
+
       let newUsuario: Usuario | null = null;
-      let newUser: User | null = null;
-      let newSession: Session | null = null;
+      let newUser: User | null = currentSession?.user ?? null;
+      let newSession: Session | null = currentSession;
 
       try {
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error("[useAuth] initialSessionCheck: Erro ao obter sessão:", sessionError);
-          // Não lançar erro aqui, apenas registrar e continuar com nulls
-        } else if (currentSession) {
-          newUser = currentSession.user;
-          newSession = currentSession;
-          console.log("[useAuth] initialSessionCheck: Sessão presente. Buscando perfil.");
+        if (newUser) {
           newUsuario = await fetchUserProfile(newUser);
-        } else {
-          console.log("[useAuth] initialSessionCheck: Nenhuma sessão encontrada.");
         }
       } catch (error) {
-        console.error("[useAuth] initialSessionCheck: Erro inesperado durante a verificação inicial:", error);
+        console.error("[useAuth] handleAuthEvent: Erro durante o processamento do evento de autenticação:", error);
+        newUser = null;
+        newSession = null;
+        newUsuario = null;
       } finally {
         if (isMounted) {
           setUser(newUser);
@@ -113,20 +111,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUsuario(newUsuario);
           console.log("[useAuth] setUsuario chamado:", !!newUsuario);
           setIsLoadingAuth(false);
-          console.log(`[useAuth] Estado FINAL após initialSessionCheck: user=`, !!newUser, "session=", !!newSession, "usuario=", !!newUsuario, "isLoadingAuth=false");
+          console.log(`[useAuth] Estado FINAL após handleAuthEvent (evento: ${event}): user=`, !!newUser, "session=", !!newSession, "usuario=", !!newUsuario, "isLoadingAuth=false");
         }
       }
     };
 
-    initialSessionCheck();
+    // Configura o listener de eventos de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthEvent);
 
-    // Temporariamente removendo o listener onAuthStateChange para depuração
-    // const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthEvent);
+    // Dispara uma verificação de sessão inicial imediatamente
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (isMounted) {
+        console.log("[useAuth] getSession inicial concluído. Disparando handleAuthEvent para INITIAL_SESSION.");
+        handleAuthEvent('INITIAL_SESSION', initialSession);
+      }
+    }).catch(err => {
+      console.error("[useAuth] Erro durante o getSession inicial:", err);
+      if (isMounted) {
+        setIsLoadingAuth(false);
+        console.log("[useAuth] Erro no getSession inicial. Definindo isLoadingAuth como false.");
+      }
+    });
 
     return () => {
       console.log("[useAuth] useEffect de limpeza executado.");
       isMounted = false;
-      // subscription.unsubscribe(); // Descomentar quando o listener for reativado
+      subscription.unsubscribe();
     };
   }, [fetchUserProfile]);
 
