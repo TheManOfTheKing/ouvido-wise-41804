@@ -40,11 +40,14 @@ export function useUsuarios() {
         throw new Error("Usuário de autenticação não retornado após o cadastro.");
       }
 
-      // 2. Insert profile into public.usuarios table, linking with auth_id
+      // 2. Prepare data for public.usuarios table, excluding the password
+      const { password, ...profileData } = novoUsuarioData; // Exclude password
+
+      // 3. Insert profile into public.usuarios table, linking with auth_id
       const { data, error: dbError } = await supabase
         .from("usuarios")
         .insert({
-          ...novoUsuarioData,
+          ...profileData, // Use profileData without password
           auth_id: user.id, // Link with the newly created auth user ID
           primeiro_acesso: true, // Mark as first access
           ativo: true, // Default to active
