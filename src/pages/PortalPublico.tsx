@@ -11,6 +11,13 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText, Send, Search, Shield, MessageCircle, ThumbsUp, Lightbulb, AlertTriangle, FileQuestion } from "lucide-react";
 import { Link } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"; // Importar componentes do Dialog
+import PrivacyPolicyContent from "./PrivacyPolicy"; // Importar o componente de conteúdo da política
 
 export default function PortalPublico() {
   const [modo, setModo] = useState<"registrar" | "consultar">("registrar");
@@ -29,6 +36,9 @@ export default function PortalPublico() {
   // Consulta
   const [protocoloConsulta, setProtocoloConsulta] = useState("");
   const [statusConsulta, setStatusConsulta] = useState<any>(null);
+
+  // Estado para o modal da Política de Privacidade
+  const [showPrivacyPolicyModal, setShowPrivacyPolicyModal] = useState(false);
 
   const tiposManifestacao = [
     { value: "ELOGIO", label: "Elogio", icon: ThumbsUp, color: "text-success" },
@@ -333,9 +343,12 @@ export default function PortalPublico() {
                       />
                       <Label htmlFor="lgpd" className="text-sm font-normal cursor-pointer">
                         Li e concordo com a{" "}
-                        <Link to="/politica-de-privacidade" className="text-primary underline"> {/* Link atualizado */}
+                        <span
+                          onClick={() => setShowPrivacyPolicyModal(true)} // Abre o modal
+                          className="text-primary underline cursor-pointer"
+                        >
                           Política de Privacidade
-                        </Link>{" "}
+                        </span>{" "}
                         e autorizo o tratamento dos meus dados pessoais conforme a LGPD. *
                       </Label>
                     </div>
@@ -417,6 +430,16 @@ export default function PortalPublico() {
           <p className="mt-2">Seus dados estão protegidos conforme a LGPD</p>
         </div>
       </footer>
+
+      {/* Modal da Política de Privacidade */}
+      <Dialog open={showPrivacyPolicyModal} onOpenChange={setShowPrivacyPolicyModal}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Política de Privacidade</DialogTitle>
+          </DialogHeader>
+          <PrivacyPolicyContent onClose={() => setShowPrivacyPolicyModal(false)} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

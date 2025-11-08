@@ -15,7 +15,7 @@ import NotFound from "./pages/NotFound";
 import UsuariosPage from "./pages/Usuarios";
 import SetoresPage from "./pages/Setores";
 import ReportsPage from "./pages/ReportsPage";
-import PrivacyPolicy from "./pages/PrivacyPolicy"; // Importar PrivacyPolicy
+// import PrivacyPolicy from "./pages/PrivacyPolicy"; // Remover import
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 const queryClient = new QueryClient({
@@ -43,7 +43,7 @@ const App = () => (
               <Route path="/" element={<PortalPublico />} />
               <Route path="/login" element={<Login />} />
               <Route path="/registro" element={<Register />} />
-              <Route path="/politica-de-privacidade" element={<PrivacyPolicy />} /> {/* Nova rota */}
+              {/* <Route path="/politica-de-privacidade" element={<PrivacyPolicy />} /> */} {/* Rota removida */}
               <Route
                 path="/dashboard"
                 element={
