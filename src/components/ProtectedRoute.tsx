@@ -32,6 +32,9 @@ export function ProtectedRoute({ children, adminOnly = false }: ProtectedRoutePr
   // In this case, we should treat it as an unauthenticated state for the application.
   if (!usuario) {
     console.log("[ProtectedRoute] Supabase user found, but app profile (usuario) is null. Redirecting to login.");
+    // Adiciona um pequeno delay para garantir que o signOut tenha tempo de processar, se necessário
+    // ou para evitar um loop de redirecionamento rápido em caso de falha persistente do perfil.
+    // No entanto, o signOut já é tratado no Login.tsx para 'profile_missing'.
     return <Navigate to="/login?error=profile_missing" replace />;
   }
 

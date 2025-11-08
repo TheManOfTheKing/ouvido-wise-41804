@@ -15,7 +15,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams(); // Usar setSearchParams
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     const errorParam = searchParams.get("error");
@@ -23,6 +23,9 @@ export default function Login() {
       toast.error("Conta inativa", {
         description: "Sua conta está inativa. Por favor, contate o administrador.",
       });
+      // Limpar o parâmetro de erro após exibir o toast
+      searchParams.delete("error");
+      setSearchParams(searchParams, { replace: true });
     } else if (errorParam === "profile_missing") {
       toast.error("Erro no perfil", {
         description: "Não foi possível carregar seu perfil. Tentando limpar a sessão...",
@@ -33,12 +36,12 @@ export default function Login() {
         await supabase.auth.signOut(); // Isso limpa os dados da sessão no Local Storage
         // Remover o parâmetro de erro da URL
         searchParams.delete("error");
-        setSearchParams(searchParams); // Atualizar a URL sem recarregar a página
+        setSearchParams(searchParams, { replace: true }); // Atualizar a URL sem recarregar a página
         console.log("[Login] Sessão do Supabase limpa e URL atualizada.");
       };
       clearAndRedirect();
     }
-  }, [searchParams, setSearchParams]); // Adicionar setSearchParams às dependências
+  }, [searchParams, setSearchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

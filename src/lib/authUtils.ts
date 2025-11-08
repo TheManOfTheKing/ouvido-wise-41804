@@ -15,8 +15,10 @@ export async function fetchUserProfile(authUser: User): Promise<Usuario | null> 
 
     if (profileError) {
       if (profileError.code === 'PGRST116') { // No rows found
-        console.warn("[authUtils] fetchUserProfile: Perfil do usuário não encontrado. Tentando criar novo perfil...");
-        const defaultPerfil = (authUser.user_metadata?.perfil?.toUpperCase()) || "ANALISTA";
+        console.warn("[authUtils] fetchUserProfile: Perfil do usuário não encontrado para auth_id:", authUser.id, ". Tentando criar novo perfil...");
+        
+        // Extrai o perfil do user_metadata, se disponível, ou define como 'ANALISTA'
+        const defaultPerfil = (authUser.user_metadata?.perfil?.toUpperCase() as Tables<'usuarios'>['perfil']) || "ANALISTA";
         const defaultName = authUser.user_metadata?.nome || authUser.email!.split('@')[0];
 
         const { data: newProfile, error: createError } = await supabase
@@ -36,7 +38,7 @@ export async function fetchUserProfile(authUser: User): Promise<Usuario | null> 
           console.error("[authUtils] fetchUserProfile: Erro ao criar perfil do usuário:", createError);
           return null;
         }
-        console.log("[authUtils] fetchUserProfile: Novo perfil criado:", newProfile);
+        console.log("[authUtils] fetchUserProfile: Novo perfil criado com sucesso:", newProfile);
         return newProfile;
       } else {
         console.error("[authUtils] fetchUserProfile: Erro ao buscar perfil do usuário:", profileError);
