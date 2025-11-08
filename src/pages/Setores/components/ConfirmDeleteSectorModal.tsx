@@ -15,10 +15,16 @@ export function ConfirmDeleteSectorModal({ open, onClose, sectorId, sectorName }
   const { mutate: deleteSetor, isDeleting } = useSetores();
 
   const handleDelete = async () => {
+    console.log("handleDelete called for sectorId:", sectorId);
     deleteSetor(sectorId, {
       onSuccess: () => {
+        console.log("deleteSetor onSuccess callback");
         onClose();
       },
+      onError: (error) => {
+        console.error("deleteSetor onError callback:", error);
+        // The useSetores hook already handles toast.error, so no need to duplicate here
+      }
     });
   };
 

@@ -97,19 +97,25 @@ export function useSetores() {
 
   const deleteMutation = useMutation({
     mutationFn: async (setorId: string) => {
+      console.log("deleteMutation.mutationFn: Attempting to delete sector with ID:", setorId);
       const { error } = await supabase
         .from("setores")
         .delete()
         .eq("id", setorId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("deleteMutation.mutationFn: Supabase delete error:", error);
+        throw error;
+      }
+      console.log("deleteMutation.mutationFn: Sector deleted successfully:", setorId);
     },
     onSuccess: () => {
+      console.log("deleteMutation.onSuccess: Invalidating queries and showing toast.");
       queryClient.invalidateQueries({ queryKey: ["setores"] });
       toast.success("Setor excluído com sucesso!");
     },
     onError: (error) => {
-      console.error("Erro ao excluir setor:", error);
+      console.error("deleteMutation.onError: Error during sector deletion:", error);
       let errorMessage = "Ocorreu um erro inesperado ao excluir o setor.";
       if (error.code === '23503') { // Foreign key violation
         errorMessage = "Não foi possível excluir o setor. Existem usuários, manifestações ou planos de ação associados a ele. Por favor, remova ou reassocie-os antes de tentar novamente.";
