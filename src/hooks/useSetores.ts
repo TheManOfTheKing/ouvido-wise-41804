@@ -126,6 +126,8 @@ export function useSetores() {
     },
   });
 
+  console.log("useSetores hook returning. deleteMutation.mutate:", deleteMutation.mutate);
+
   return {
     ...query,
     createSetor: createMutation.mutate,
