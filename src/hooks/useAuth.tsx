@@ -23,6 +23,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  console.log("[useAuth] AuthProvider renderizado."); // Log na renderização do componente
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
@@ -78,11 +79,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    console.log("[useAuth] useEffect principal executado."); // Log no início do useEffect
     let isMounted = true;
 
     const handleAuthEvent = async (event: AuthChangeEvent, currentSession: Session | null) => {
       console.log(`[useAuth] handleAuthEvent: Evento: ${event}, Sessão:`, currentSession ? 'present' : 'null');
-      if (!isMounted) return;
+      if (!isMounted) {
+        console.log("[useAuth] handleAuthEvent: Componente desmontado, ignorando evento.");
+        return;
+      }
 
       let newUsuario: Usuario | null = null;
       let newUser: User | null = currentSession?.user ?? null;
@@ -127,11 +132,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthEvent);
 
+    // DEBUG: Força isLoadingAuth a false após um tempo, caso a lógica acima falhe
+    const debugTimeout = setTimeout(() => {
+      if (isMounted && isLoadingAuth) {
+        console.warn("[useAuth] DEBUG: Forçando isLoadingAuth para false após timeout. Isso indica um problema na resolução da autenticação.");
+        setIsLoadingAuth(false);
+      }
+    }, 3000); // 3 segundos
+
     return () => {
+      console.log("[useAuth] useEffect de limpeza executado.");
       isMounted = false;
       subscription.unsubscribe();
+      clearTimeout(debugTimeout); // Limpa o timeout de debug
     };
-  }, [fetchUserProfile]);
+  }, [fetchUserProfile, isLoadingAuth]); // Adicionado isLoadingAuth como dependência para o debugTimeout
 
   useEffect(() => {
     const handleFocus = async () => {
