@@ -20,6 +20,7 @@ export function useReports(filters: ReportFilters) {
         .select("tipo, count")
         .gte("created_at", start)
         .lte("created_at", end)
+        .group("tipo") // Adicionado GROUP BY para 'tipo'
         .order("count", { ascending: false })
         .returns<{ tipo: string; count: number }[]>();
 
@@ -31,6 +32,7 @@ export function useReports(filters: ReportFilters) {
         .select("status, count")
         .gte("created_at", start)
         .lte("created_at", end)
+        .group("status") // Adicionado GROUP BY para 'status'
         .order("count", { ascending: false })
         .returns<{ status: string; count: number }[]>();
 
