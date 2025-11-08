@@ -38,6 +38,7 @@ export const authService = {
   // Sign in
     async signIn(email: string, password: string): Promise<AuthResult> {
     // Removido o signOut() daqui, pois o signInWithPassword já gerencia a sessão existente.
+    // O signOut() não é necessário aqui, pois o signInWithPassword já gerencia a sessão existente.
     // await supabase.auth.signOut(); 
 
     try {
