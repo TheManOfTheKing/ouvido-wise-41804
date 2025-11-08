@@ -1,8 +1,6 @@
 -- Drop existing functions to ensure a clean slate and consistent signatures
 DROP FUNCTION IF EXISTS public.get_manifestacoes_by_type(timestamptz, timestamptz);
 DROP FUNCTION IF EXISTS public.get_manifestacoes_by_status(timestamptz, timestamptz);
--- Drop old signatures for get_manifestacoes_by_day if they exist
-DROP FUNCTION IF EXISTS public.get_manifestacoes_by_day(date, date);
 DROP FUNCTION IF EXISTS public.get_manifestacoes_by_day(timestamptz, timestamptz);
 
 -- Recreate get_manifestacoes_by_type function
@@ -11,7 +9,7 @@ CREATE OR REPLACE FUNCTION public.get_manifestacoes_by_type(
     end_date_param timestamptz
 )
 RETURNS TABLE (
-    tipo public.Enums.tipo_manifestacao,
+    tipo public.tipo_manifestacao, -- CORRIGIDO: Removido .Enums
     count bigint
 )
 LANGUAGE plpgsql
@@ -42,7 +40,7 @@ CREATE OR REPLACE FUNCTION public.get_manifestacoes_by_status(
     end_date_param timestamptz
 )
 RETURNS TABLE (
-    status public.Enums.status_manifestacao,
+    status public.status_manifestacao, -- CORRIGIDO: Removido .Enums
     count bigint
 )
 LANGUAGE plpgsql
