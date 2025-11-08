@@ -62,8 +62,9 @@ Deno.serve(async (req: Request) => {
     console.log("Email enviado com sucesso:", emailResponse);
 
     // Registrar comunicação no banco
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    // Usando os novos nomes de variáveis de ambiente
+    const supabaseUrl = Deno.env.get("MY_SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("MY_SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Buscar ID do usuário que está respondendo
