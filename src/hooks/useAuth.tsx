@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true); // True inicialmente
   const navigate = useNavigate();
 
   const fetchUserProfile = useCallback(async (authUser: User) => {
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (profileError) {
-        if (profileError.code === 'PGRST116') {
+        if (profileError.code === 'PGRST116') { // No rows found
           console.warn("[useAuth] fetchUserProfile: Perfil do usuário não encontrado. Tentando criar novo perfil...");
           const defaultPerfil = (authUser.user_metadata?.perfil?.toUpperCase()) || "ANALISTA";
           const defaultName = authUser.user_metadata?.nome || authUser.email!.split('@')[0];
@@ -78,14 +78,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Effect para carregamento inicial da sessão
   useEffect(() => {
-    console.log("[useAuth] useEffect principal executado.");
+    console.log("[useAuth] useEffect (initial load) executado.");
     let isMounted = true;
 
-    const handleAuthEvent = async (event: AuthChangeEvent, currentSession: Session | null) => {
-      console.log(`[useAuth] handleAuthEvent: Evento: ${event}, Sessão:`, currentSession ? 'present' : 'null');
+    const loadInitialSession = async () => {
+      console.log("[useAuth] loadInitialSession: Iniciando verificação de sessão inicial.");
+      try {
+        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (!isMounted) return; // Previne atualizações de estado se o componente foi desmontado
+
+        if (sessionError) {
+          console.error("[useAuth] loadInitialSession: Erro ao obter sessão inicial:", sessionError);
+          setUser(null);
+          setSession(null);
+          setUsuario(null);
+        } else if (initialSession) {
+          setUser(initialSession.user);
+          setSession(initialSession);
+          const profile = await fetchUserProfile(initialSession.user);
+          if (!isMounted) return;
+          setUsuario(profile);
+        } else {
+          console.log("[useAuth] loadInitialSession: Nenhuma sessão inicial encontrada.");
+          setUser(null);
+          setSession(null);
+          setUsuario(null);
+        }
+      } catch (error) {
+        console.error("[useAuth] loadInitialSession: Erro inesperado durante a verificação inicial:", error);
+        setUser(null);
+        setSession(null);
+        setUsuario(null);
+      } finally {
+        if (isMounted) {
+          setIsLoadingAuth(false);
+          console.log("[useAuth] loadInitialSession: isLoadingAuth definido como false.");
+        }
+      }
+    };
+
+    loadInitialSession();
+
+    return () => {
+      console.log("[useAuth] useEffect (initial load) de limpeza executado.");
+      isMounted = false;
+    };
+  }, [fetchUserProfile]); // Depende apenas de fetchUserProfile
+
+  // Effect para mudanças de estado de autenticação em tempo real
+  useEffect(() => {
+    console.log("[useAuth] useEffect (onAuthStateChange) executado.");
+    let isMounted = true;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      console.log(`[useAuth] onAuthStateChange: Evento: ${event}, Sessão:`, currentSession ? 'present' : 'null');
       if (!isMounted) {
-        console.log("[useAuth] handleAuthEvent: Componente desmontado, ignorando evento.");
+        console.log("[useAuth] onAuthStateChange: Componente desmontado, ignorando evento.");
         return;
       }
 
@@ -93,52 +144,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let newUser: User | null = currentSession?.user ?? null;
       let newSession: Session | null = currentSession;
 
-      try {
-        if (newUser) {
-          newUsuario = await fetchUserProfile(newUser);
-        }
-      } catch (error) {
-        console.error("[useAuth] handleAuthEvent: Erro durante o processamento do evento de autenticação:", error);
-        newUser = null;
-        newSession = null;
-        newUsuario = null;
-      } finally {
-        if (isMounted) {
-          setUser(newUser);
-          console.log("[useAuth] setUser chamado:", !!newUser);
-          setSession(newSession);
-          console.log("[useAuth] setSession chamado:", !!newSession);
-          setUsuario(newUsuario);
-          console.log("[useAuth] setUsuario chamado:", !!newUsuario);
-          setIsLoadingAuth(false);
-          console.log(`[useAuth] Estado FINAL após handleAuthEvent (evento: ${event}): user=`, !!newUser, "session=", !!newSession, "usuario=", !!newUsuario, "isLoadingAuth=false");
-        }
+      if (newUser) {
+        newUsuario = await fetchUserProfile(newUser);
       }
-    };
 
-    // Configura o listener de eventos de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthEvent);
-
-    // Dispara uma verificação de sessão inicial imediatamente
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
       if (isMounted) {
-        console.log("[useAuth] getSession inicial concluído. Disparando handleAuthEvent para INITIAL_SESSION.");
-        handleAuthEvent('INITIAL_SESSION', initialSession);
-      }
-    }).catch(err => {
-      console.error("[useAuth] Erro durante o getSession inicial:", err);
-      if (isMounted) {
-        setIsLoadingAuth(false);
-        console.log("[useAuth] Erro no getSession inicial. Definindo isLoadingAuth como false.");
+        setUser(newUser);
+        setSession(newSession);
+        setUsuario(newUsuario);
+        console.log(`[useAuth] Estado ATUALIZADO por onAuthStateChange (evento: ${event}): user=`, !!newUser, "session=", !!newSession, "usuario=", !!newUsuario);
       }
     });
 
     return () => {
-      console.log("[useAuth] useEffect de limpeza executado.");
+      console.log("[useAuth] useEffect (onAuthStateChange) de limpeza executado.");
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchUserProfile]);
+  }, [fetchUserProfile]); // Depende de fetchUserProfile
 
   useEffect(() => {
     const handleFocus = async () => {
