@@ -54,8 +54,8 @@ export function useReports(filters: ReportFilters) {
       // Manifestações ao Longo do Tempo (por dia) (já usando RPC)
       const { data: overTime, error: overTimeError } = await supabase
         .rpc("get_manifestacoes_by_day", {
-          start_date: start,
-          end_date: end,
+          start_date_param: start, // Nome do parâmetro corrigido
+          end_date_param: end,   // Nome do parâmetro corrigido
         })
         .returns<ManifestacoesOverTime[]>();
 
