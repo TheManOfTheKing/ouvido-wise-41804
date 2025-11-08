@@ -23,11 +23,11 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  console.log("[useAuth] AuthProvider renderizado."); // Log na renderização do componente
+  console.log("[useAuth] AuthProvider renderizado.");
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true); // True inicialmente
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const navigate = useNavigate();
 
   const fetchUserProfile = useCallback(async (authUser: User) => {
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (profileError) {
-        if (profileError.code === 'PGRST116') { // No rows found
+        if (profileError.code === 'PGRST116') {
           console.warn("[useAuth] fetchUserProfile: Perfil do usuário não encontrado. Tentando criar novo perfil...");
           const defaultPerfil = (authUser.user_metadata?.perfil?.toUpperCase()) || "ANALISTA";
           const defaultName = authUser.user_metadata?.nome || authUser.email!.split('@')[0];
@@ -79,29 +79,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    console.log("[useAuth] useEffect principal executado."); // Log no início do useEffect
+    console.log("[useAuth] useEffect principal executado.");
     let isMounted = true;
 
-    const handleAuthEvent = async (event: AuthChangeEvent, currentSession: Session | null) => {
-      console.log(`[useAuth] handleAuthEvent: Evento: ${event}, Sessão:`, currentSession ? 'present' : 'null');
-      if (!isMounted) {
-        console.log("[useAuth] handleAuthEvent: Componente desmontado, ignorando evento.");
-        return;
-      }
-
+    const initialSessionCheck = async () => {
+      console.log("[useAuth] initialSessionCheck: Iniciando verificação de sessão.");
       let newUsuario: Usuario | null = null;
-      let newUser: User | null = currentSession?.user ?? null;
-      let newSession: Session | null = currentSession;
+      let newUser: User | null = null;
+      let newSession: Session | null = null;
 
       try {
-        if (newUser) {
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("[useAuth] initialSessionCheck: Erro ao obter sessão:", sessionError);
+          // Não lançar erro aqui, apenas registrar e continuar com nulls
+        } else if (currentSession) {
+          newUser = currentSession.user;
+          newSession = currentSession;
+          console.log("[useAuth] initialSessionCheck: Sessão presente. Buscando perfil.");
           newUsuario = await fetchUserProfile(newUser);
+        } else {
+          console.log("[useAuth] initialSessionCheck: Nenhuma sessão encontrada.");
         }
       } catch (error) {
-        console.error("[useAuth] handleAuthEvent: Erro durante o processamento do evento de autenticação:", error);
-        newUser = null;
-        newSession = null;
-        newUsuario = null;
+        console.error("[useAuth] initialSessionCheck: Erro inesperado durante a verificação inicial:", error);
       } finally {
         if (isMounted) {
           setUser(newUser);
@@ -110,43 +112,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log("[useAuth] setSession chamado:", !!newSession);
           setUsuario(newUsuario);
           console.log("[useAuth] setUsuario chamado:", !!newUsuario);
-          setIsLoadingAuth(false); // Garante que o loading seja definido como false
-          console.log(`[useAuth] Estado FINAL após handleAuthEvent (evento: ${event}): user=`, !!newUser, "session=", !!newSession, "usuario=", !!newUsuario, "isLoadingAuth=false");
+          setIsLoadingAuth(false);
+          console.log(`[useAuth] Estado FINAL após initialSessionCheck: user=`, !!newUser, "session=", !!newSession, "usuario=", !!newUsuario, "isLoadingAuth=false");
         }
       }
     };
 
-    // Dispara uma verificação de sessão inicial e configura o listener
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      if (isMounted) {
-        console.log("[useAuth] getSession inicial concluído. Disparando handleAuthEvent para INITIAL_SESSION.");
-        handleAuthEvent('INITIAL_SESSION', initialSession);
-      }
-    }).catch(err => {
-      console.error("[useAuth] Erro durante o getSession inicial:", err);
-      if (isMounted) {
-        setIsLoadingAuth(false); // Garante que o estado de carregamento seja resolvido mesmo em caso de erro
-        console.log("[useAuth] Erro no getSession inicial. Definindo isLoadingAuth como false.");
-      }
-    });
+    initialSessionCheck();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthEvent);
-
-    // DEBUG: Força isLoadingAuth a false após um tempo, caso a lógica acima falhe
-    const debugTimeout = setTimeout(() => {
-      if (isMounted && isLoadingAuth) {
-        console.warn("[useAuth] DEBUG: Forçando isLoadingAuth para false após timeout. Isso indica um problema na resolução da autenticação.");
-        setIsLoadingAuth(false);
-      }
-    }, 3000); // 3 segundos
+    // Temporariamente removendo o listener onAuthStateChange para depuração
+    // const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthEvent);
 
     return () => {
       console.log("[useAuth] useEffect de limpeza executado.");
       isMounted = false;
-      subscription.unsubscribe();
-      clearTimeout(debugTimeout); // Limpa o timeout de debug
+      // subscription.unsubscribe(); // Descomentar quando o listener for reativado
     };
-  }, [fetchUserProfile, isLoadingAuth]); // Adicionado isLoadingAuth como dependência para o debugTimeout
+  }, [fetchUserProfile]);
 
   useEffect(() => {
     const handleFocus = async () => {
