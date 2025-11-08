@@ -1,5 +1,5 @@
-import { useState, useEffect, createContext, useContext, useCallback } from "react";
-import { User, Session } from "@supabase/supabase-js";
+import { useState, useEffect, createContext, useContext, useCallback, useRef } from "react";
+import { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Tables } from "@/integrations/supabase/types";
@@ -26,8 +26,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true); // True inicialmente, torna-se false após a primeira verificação
   const navigate = useNavigate();
+  const isInitialCheckDoneRef = useRef(false); // Usar ref para rastrear se a verificação inicial foi concluída
 
   const fetchUserProfile = useCallback(async (authUser: User) => {
     console.log("[useAuth] fetchUserProfile: Iniciando busca do perfil para auth_id:", authUser.id);
@@ -80,95 +81,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
-    const handleAuthChange = async (event: string, currentSession: Session | null) => {
-      console.log(`[useAuth] onAuthStateChange: Evento: ${event}, Sessão:`, currentSession);
+    const handleAuthEvent = async (event: AuthChangeEvent, currentSession: Session | null) => {
+      console.log(`[useAuth] handleAuthEvent: Evento: ${event}, Sessão:`, currentSession ? 'present' : 'null');
       if (!isMounted) return;
-
-      setLoading(true); // Start loading for any auth state change
 
       try {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
+        let fetchedUsuario: Usuario | null = null;
         if (currentSession?.user) {
-          const fetchedUsuario = await fetchUserProfile(currentSession.user);
-          if (isMounted) {
-            setUsuario(fetchedUsuario);
-          }
-        } else {
-          setUsuario(null);
+          fetchedUsuario = await fetchUserProfile(currentSession.user);
+        }
+        if (isMounted) {
+          setUsuario(fetchedUsuario);
         }
       } catch (error) {
-        console.error("[useAuth] onAuthStateChange: Erro durante a mudança de estado de autenticação:", error);
+        console.error("[useAuth] handleAuthEvent: Erro durante o processamento do evento de autenticação:", error);
         if (isMounted) {
           setUsuario(null);
           setUser(null);
           setSession(null);
         }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-          console.log(`[useAuth] State after onAuthStateChange (event: ${event}): user=`, currentSession?.user ? 'present' : 'null', "session=", currentSession ? 'present' : 'null', "usuario=", usuario ? 'present' : 'null', "loading=", false);
+        // Define isLoadingAuth como false apenas após a primeira verificação de autenticação
+        // Isso garante que o spinner de carregamento só apareça na carga inicial.
+        if (isMounted && !isInitialCheckDoneRef.current) {
+          setIsLoadingAuth(false);
+          isInitialCheckDoneRef.current = true;
+          console.log("[useAuth] Verificação inicial de autenticação concluída. Definindo isLoadingAuth como false.");
         }
+        // O log abaixo pode mostrar `usuario` e `isLoadingAuth` desatualizados devido ao closure,
+        // mas os estados reais serão atualizados corretamente.
+        console.log(`[useAuth] Estado após handleAuthEvent (evento: ${event}): user=`, currentSession?.user ? 'present' : 'null', "session=", currentSession ? 'present' : 'null', "usuario=", usuario ? 'present' : 'null', "isLoadingAuth=", isLoadingAuth);
       }
     };
 
-    // Initial session check
-    const getInitialSession = async () => {
-      console.log("[useAuth] getInitialSession: Tentando obter sessão inicial.");
-      setLoading(true); // Ensure loading is true during initial check
-      try {
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        if (isMounted) {
-          if (error) {
-            console.error("[useAuth] getInitialSession: Erro ao obter sessão inicial:", error);
-            setSession(null);
-            setUser(null);
-            setUsuario(null);
-          } else if (initialSession) {
-            console.log("[useAuth] getInitialSession: Sessão inicial encontrada:", initialSession);
-            setSession(initialSession);
-            setUser(initialSession.user);
-            const fetchedUsuario = await fetchUserProfile(initialSession.user);
-            if (isMounted) {
-              setUsuario(fetchedUsuario);
-            }
-          } else {
-            console.log("[useAuth] getInitialSession: Nenhuma sessão inicial encontrada.");
-            setSession(null);
-            setUser(null);
-            setUsuario(null);
-          }
-        }
-      } catch (err) {
-        console.error("[useAuth] getInitialSession: Erro inesperado ao obter sessão inicial:", err);
-        if (isMounted) {
-          setSession(null);
-          setUser(null);
-          setUsuario(null);
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-          console.log("[useAuth] State after getInitialSession: user=", user ? 'present' : 'null', "session=", session ? 'present' : 'null', "usuario=", usuario ? 'present' : 'null', "loading=", false);
-        }
+    // Configura o listener de mudança de estado de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthEvent);
+
+    // Dispara uma verificação de sessão inicial manualmente para garantir que o estado seja configurado
+    // na primeira renderização. Isso é importante porque `onAuthStateChange` pode não disparar
+    // 'INITIAL_SESSION' se uma sessão já existe ou se nenhuma sessão existe.
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (isMounted && !isInitialCheckDoneRef.current) {
+        handleAuthEvent('INITIAL_SESSION', initialSession);
       }
-    };
-
-    getInitialSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
+    }).catch(err => {
+      console.error("[useAuth] Erro durante o getSession inicial:", err);
+      if (isMounted && !isInitialCheckDoneRef.current) {
+        setIsLoadingAuth(false); // Garante que o estado de carregamento seja resolvido mesmo em caso de erro
+        isInitialCheckDoneRef.current = true;
+      }
+    });
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchUserProfile]);
+  }, [fetchUserProfile]); // `fetchUserProfile` é uma dependência porque é um useCallback.
 
   useEffect(() => {
     const handleFocus = async () => {
-      console.log("[useAuth] Window focused. Explicitly checking session.");
-      // This will trigger onAuthStateChange if the session has changed or needs refreshing.
+      console.log("[useAuth] Janela focada. Verificando explicitamente a sessão.");
+      // Isso irá disparar `onAuthStateChange` se a sessão mudou ou precisa ser atualizada.
       await supabase.auth.getSession();
     };
 
@@ -185,11 +161,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsuario(null);
     setUser(null);
     setSession(null);
+    setIsLoadingAuth(true); // Redefine o estado de carregamento para o próximo login
+    isInitialCheckDoneRef.current = false; // Redefine a ref
     navigate("/login");
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, usuario, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, usuario, loading: isLoadingAuth, signOut }}>
       {children}
     </AuthContext.Provider>
   );
