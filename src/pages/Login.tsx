@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { authService } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client"; // Importar o cliente supabase
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -14,7 +15,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams(); // Usar setSearchParams
 
   useEffect(() => {
     const errorParam = searchParams.get("error");
@@ -24,10 +25,20 @@ export default function Login() {
       });
     } else if (errorParam === "profile_missing") {
       toast.error("Erro no perfil", {
-        description: "Não foi possível carregar seu perfil. Por favor, tente novamente ou contate o suporte.",
+        description: "Não foi possível carregar seu perfil. Tentando limpar a sessão...",
       });
+      // Tentar limpar a sessão e remover o parâmetro de erro
+      const clearAndRedirect = async () => {
+        console.log("[Login] Erro 'profile_missing' detectado. Tentando limpar a sessão do Supabase.");
+        await supabase.auth.signOut(); // Isso limpa os dados da sessão no Local Storage
+        // Remover o parâmetro de erro da URL
+        searchParams.delete("error");
+        setSearchParams(searchParams); // Atualizar a URL sem recarregar a página
+        console.log("[Login] Sessão do Supabase limpa e URL atualizada.");
+      };
+      clearAndRedirect();
     }
-  }, [searchParams]);
+  }, [searchParams, setSearchParams]); // Adicionar setSearchParams às dependências
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
