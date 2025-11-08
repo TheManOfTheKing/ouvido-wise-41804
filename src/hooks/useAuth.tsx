@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, createContext, useContext, useCallback } from "react"; // Import useCallback
 import { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -29,8 +29,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Function to fetch user profile
-  const fetchUserProfile = async (authUser: User) => {
+  // Function to fetch user profile, memoized with useCallback
+  const fetchUserProfile = useCallback(async (authUser: User) => {
     console.log("[useAuth] fetchUserProfile: Iniciando busca do perfil para auth_id:", authUser.id);
     try {
       const { data: profile, error: profileError } = await supabase
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("[useAuth] fetchUserProfile: Erro ao carregar perfil do usuário:", error);
       return null;
     }
-  };
+  }, []); // No dependencies needed for useCallback as it only uses authUser and supabase client
 
   useEffect(() => {
     let isMounted = true; // Flag para evitar atualizações de estado em componentes desmontados
@@ -161,7 +161,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isMounted = false; // Limpar flag
       subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchUserProfile]); // Add fetchUserProfile to dependencies
+
+  // Add a new useEffect to handle window focus events
+  useEffect(() => {
+    const handleFocus = async () => {
+      console.log("[useAuth] Window focused. Explicitly checking session.");
+      // Calling getSession() will force Supabase to check its storage and potentially refresh the token.
+      // This action will trigger the onAuthStateChange listener if the session state changes.
+      await supabase.auth.getSession();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
 
   const signOut = async () => {
     console.log("[useAuth] signOut: Saindo do sistema.");
