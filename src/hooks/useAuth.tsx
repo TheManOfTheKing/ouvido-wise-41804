@@ -1,9 +1,10 @@
-import { useState, useEffect, createContext, useContext, useRef } from "react";
+import { useState, useEffect, createContext, useContext } from "react";
 import { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Tables } from "@/integrations/supabase/types";
 import { fetchUserProfile } from "@/lib/authUtils";
+import { useMounted } from "./use-mounted"; // Importar o hook useMounted
 
 type Usuario = Tables<'usuarios'>;
 
@@ -27,54 +28,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true); // True enquanto a sessão inicial e o perfil estão sendo carregados
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const navigate = useNavigate();
+  const isMountedRef = useMounted(); // Usar o hook useMounted
 
-
-
-  // Efeito para lidar com mudanças de estado de autenticação em tempo real e carregamento inicial
+  // Efeito para carregar a sessão inicial e o perfil na montagem do componente
   useEffect(() => {
-    let isMounted = true;
-
-    // 1. Carrega a sessão inicial imediatamente
     const loadInitialSession = async () => {
-      console.log("[useAuth] loadInitialSession: Tentando carregar sessão inicial.");
+      console.log("[useAuth] loadInitialSession: Iniciando carregamento da sessão inicial.");
       setIsLoadingAuth(true);
 
       try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        if (currentSession) {
-          console.log("[useAuth] loadInitialSession: Sessão encontrada. Buscando perfil...");
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+
+        if (!isMountedRef.current) return; // Verificar se o componente ainda está montado
+
+        if (sessionError) {
+          console.error("[useAuth] loadInitialSession: Erro ao obter sessão:", sessionError);
+          setUser(null);
+          setSession(null);
+          setUsuario(null);
+        } else if (currentSession) {
+          console.log("[useAuth] loadInitialSession: Sessão encontrada. User ID:", currentSession.user.id);
           const currentUser = currentSession.user;
           const currentUsuario = await fetchUserProfile(currentUser);
 
-          if (isMounted) {
-            setUser(currentUser);
-            setSession(currentSession);
-            setUsuario(currentUsuario);
-            console.log("[useAuth] loadInitialSession: Estado inicial definido (logado).");
-          }
+          if (!isMountedRef.current) return; // Verificar novamente após a operação assíncrona
+          
+          setUser(currentUser);
+          setSession(currentSession);
+          setUsuario(currentUsuario);
+          console.log("[useAuth] loadInitialSession: Estado inicial definido (logado). Perfil carregado:", !!currentUsuario);
         } else {
           console.log("[useAuth] loadInitialSession: Nenhuma sessão ativa encontrada.");
+          setUser(null);
+          setSession(null);
+          setUsuario(null);
         }
       } catch (error) {
-        console.error("[useAuth] loadInitialSession: Erro inesperado no carregamento inicial:", error);
+        console.error("[useAuth] loadInitialSession: Erro inesperado:", error);
+        if (!isMountedRef.current) return;
+        setUser(null);
+        setSession(null);
+        setUsuario(null);
       } finally {
-        if (isMounted) {
-          setIsLoadingAuth(false); // Finaliza o estado de carregamento inicial
-          console.log("[useAuth] loadInitialSession: Carregamento inicial concluído.");
+        if (isMountedRef.current) {
+          setIsLoadingAuth(false);
+          console.log("[useAuth] loadInitialSession: Carregamento inicial concluído. isLoadingAuth:", false);
         }
       }
     };
 
     loadInitialSession();
 
-    // 2. Assina as mudanças de estado de autenticação
+    // Assina as mudanças de estado de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, currentSession: Session | null) => {
-        console.log(`[useAuth] onAuthStateChange: Evento: ${event}, Sessão:`, currentSession ? 'present' : 'null');
-        if (!isMounted) {
+        console.log(`[useAuth] onAuthStateChange: Evento: ${event}, Sessão:`, currentSession ? 'present' : 'null', "User ID:", currentSession?.user?.id);
+        if (!isMountedRef.current) {
           console.log("[useAuth] onAuthStateChange: Componente desmontado, ignorando evento.");
           return;
         }
@@ -88,15 +99,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         try {
           if (newUser) {
+            console.log("[useAuth] onAuthStateChange: User presente. Tentando buscar perfil...");
             newUsuario = await fetchUserProfile(newUser);
+            console.log("[useAuth] onAuthStateChange: Perfil carregado:", !!newUsuario);
+          } else {
+            console.log("[useAuth] onAuthStateChange: User ausente. Limpando perfil.");
           }
         } catch (error) {
           console.error("[useAuth] onAuthStateChange: Erro ao buscar perfil no evento:", error);
-          newUser = null; // Força logout lógico se o perfil não puder ser carregado
+          newUser = null;
           newSession = null;
           newUsuario = null;
         } finally {
-          if (isMounted) {
+          if (isMountedRef.current) {
             setUser(newUser);
             setSession(newSession);
             setUsuario(newUsuario);
@@ -108,13 +123,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     return () => {
-      isMounted = false;
       subscription.unsubscribe();
       console.log("[useAuth] onAuthStateChange: Inscrição cancelada.");
     };
-  }, []); // Dependência vazia para garantir que rode apenas uma vez
-
-
+  }, [isMountedRef]); // Adicionar isMountedRef como dependência
 
   const signOut = async () => {
     console.log("[useAuth] signOut: Iniciando processo de logout.");
@@ -130,15 +142,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       console.error("[useAuth] signOut: Erro inesperado durante o logout:", err);
     } finally {
-      // O onAuthStateChange deve lidar com a atualização final do estado (que é o mais correto)
-      // No entanto, para garantir uma UX rápida, limpamos o estado local e redirecionamos.
-      // O onAuthStateChange será disparado e confirmará o estado de logout.
-      setUser(null);
-      setSession(null);
-      setUsuario(null);
-      console.log("[useAuth] signOut: Estado local limpo e redirecionando.");
-      setIsLoadingAuth(false); // Garante que o loading seja desativado
-      navigate("/login"); // Redireciona para a página de login
+      if (isMountedRef.current) { // Verificar se o componente ainda está montado antes de atualizar o estado
+        // O onAuthStateChange deve lidar com a atualização final do estado (que é o mais correto)
+        // No entanto, para garantir uma UX rápida, limpamos o estado local e redirecionamos.
+        // O onAuthStateChange será disparado e confirmará o estado de logout.
+        setUser(null);
+        setSession(null);
+        setUsuario(null);
+        console.log("[useAuth] signOut: Estado local limpo e redirecionando.");
+        setIsLoadingAuth(false); // Garante que o loading seja desativado
+        navigate("/login"); // Redireciona para a página de login
+      }
     }
   };
 

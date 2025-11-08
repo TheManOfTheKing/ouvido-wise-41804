@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { authService } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client"; // Importar o cliente supabase
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -23,20 +23,18 @@ export default function Login() {
       toast.error("Conta inativa", {
         description: "Sua conta está inativa. Por favor, contate o administrador.",
       });
-      // Limpar o parâmetro de erro após exibir o toast
       searchParams.delete("error");
       setSearchParams(searchParams, { replace: true });
     } else if (errorParam === "profile_missing") {
       toast.error("Erro no perfil", {
-        description: "Não foi possível carregar seu perfil. Tentando limpar a sessão...",
+        description: "Não foi possível carregar seu perfil. Limpando a sessão...",
       });
       // Tentar limpar a sessão e remover o parâmetro de erro
       const clearAndRedirect = async () => {
         console.log("[Login] Erro 'profile_missing' detectado. Tentando limpar a sessão do Supabase.");
         await supabase.auth.signOut(); // Isso limpa os dados da sessão no Local Storage
-        // Remover o parâmetro de erro da URL
         searchParams.delete("error");
-        setSearchParams(searchParams, { replace: true }); // Atualizar a URL sem recarregar a página
+        setSearchParams(searchParams, { replace: true });
         console.log("[Login] Sessão do Supabase limpa e URL atualizada.");
       };
       clearAndRedirect();
