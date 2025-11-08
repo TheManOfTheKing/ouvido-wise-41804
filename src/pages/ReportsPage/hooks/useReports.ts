@@ -17,10 +17,9 @@ export function useReports(filters: ReportFilters) {
       // Manifestações por Tipo
       const { data: byType, error: typeError } = await supabase
         .from("manifestacoes")
-        .select("tipo, count")
+        .select("tipo, count") // O agrupamento por 'tipo' é implícito com 'count'
         .gte("created_at", start)
         .lte("created_at", end)
-        .group("tipo") // Adicionado GROUP BY para 'tipo'
         .order("count", { ascending: false })
         .returns<{ tipo: string; count: number }[]>();
 
@@ -29,10 +28,9 @@ export function useReports(filters: ReportFilters) {
       // Manifestações por Status
       const { data: byStatus, error: statusError } = await supabase
         .from("manifestacoes")
-        .select("status, count")
+        .select("status, count") // O agrupamento por 'status' é implícito com 'count'
         .gte("created_at", start)
         .lte("created_at", end)
-        .group("status") // Adicionado GROUP BY para 'status'
         .order("count", { ascending: false })
         .returns<{ status: string; count: number }[]>();
 
