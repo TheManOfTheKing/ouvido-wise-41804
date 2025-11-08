@@ -36,7 +36,10 @@ export const authService = {
   },
 
   // Sign in
-  async signIn(email: string, password: string): Promise<AuthResult> {
+    async signIn(email: string, password: string): Promise<AuthResult> {
+    // Limpa qualquer sessão residual antes de tentar um novo login
+    await supabase.auth.signOut();
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
