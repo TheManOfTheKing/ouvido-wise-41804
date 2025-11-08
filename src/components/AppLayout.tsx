@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { Link } from "react-router-dom";
+import { ThemeToggle } from "@/components/ThemeToggle"; // Importar ThemeToggle
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -22,16 +23,17 @@ export function AppLayout({ children }: AppLayoutProps) {
             <h1 className="text-xl font-bold">Sistema de Ouvidoria</h1>
           </Link>
           <div className="flex items-center gap-4">
+            <ThemeToggle /> {/* Adicionado ThemeToggle aqui */}
             <NotificationsDropdown />
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground hidden md:inline"> {/* Oculta em telas pequenas */}
               {usuario?.nome} <span className="text-primary">({usuario?.perfil})</span>
             </span>
             <Button variant="outline" size="sm" onClick={() => {
-              console.log("[AppLayout] Botão Sair clicado."); // Log para depuração
+              console.log("[AppLayout] Botão Sair clicado.");
               signOut();
             }}>
               <LogOut className="mr-2 h-4 w-4" />
-              Sair
+              <span className="hidden md:inline">Sair</span> {/* Oculta texto em telas pequenas */}
             </Button>
           </div>
         </div>

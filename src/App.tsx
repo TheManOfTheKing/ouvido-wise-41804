@@ -13,7 +13,8 @@ import Manifestacoes from "./pages/Manifestacoes";
 import ManifestacaoDetalhes from "./pages/ManifestacaoDetalhes";
 import NotFound from "./pages/NotFound";
 import UsuariosPage from "./pages/Usuarios";
-import SetoresPage from "./pages/Setores"; // Importar a nova página de Setores
+import SetoresPage from "./pages/Setores";
+import { ThemeProvider } from "@/components/ThemeProvider"; // Importar ThemeProvider
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,61 +31,63 @@ const queryClient = new QueryClient({
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<PortalPublico />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/registro" element={<Register />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/manifestacoes"
-              element={
-                <ProtectedRoute>
-                  <Manifestacoes />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/manifestacoes/:id"
-              element={
-                <ProtectedRoute>
-                  <ManifestacaoDetalhes />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/usuarios"
-              element={
-                <ProtectedRoute adminOnly>
-                  <UsuariosPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/setores" // Nova rota para gestão de setores
-              element={
-                <ProtectedRoute adminOnly>
-                  <SetoresPage />
-                </ProtectedRoute>
-              }
-            />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider defaultTheme="dark" attribute="class"> {/* Adicionado ThemeProvider aqui */}
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<PortalPublico />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/registro" element={<Register />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/manifestacoes"
+                element={
+                  <ProtectedRoute>
+                    <Manifestacoes />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/manifestacoes/:id"
+                element={
+                  <ProtectedRoute>
+                    <ManifestacaoDetalhes />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/usuarios"
+                element={
+                  <ProtectedRoute adminOnly>
+                    <UsuariosPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/setores"
+                element={
+                  <ProtectedRoute adminOnly>
+                    <SetoresPage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider> {/* Fechamento do ThemeProvider */}
   </QueryClientProvider>
 );
 
