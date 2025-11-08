@@ -1,4 +1,4 @@
-import { Book, User, Settings, FileText, BarChart, Info, HelpCircle } from "lucide-react";
+import { Book, User, Settings, FileText, BarChart, Info, HelpCircle, Users, Building2 } from "lucide-react"; // Adicionado Users e Building2
 import React from "react";
 
 export interface ManualTopic {
