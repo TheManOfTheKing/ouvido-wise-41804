@@ -5,13 +5,14 @@ import { usePermissions } from "@/hooks/usePermissions";
 interface ProtectedRouteProps {
   children: React.ReactNode;
   adminOnly?: boolean;
+  requiredPermission?: keyof ReturnType<typeof usePermissions>; // Adicionado para permissões específicas
 }
 
-export function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, adminOnly = false, requiredPermission }: ProtectedRouteProps) {
   const { user, usuario, loading } = useAuth();
-  const { isAdmin } = usePermissions();
+  const permissions = usePermissions(); // Obter todas as permissões
 
-  console.log("[ProtectedRoute] Render: loading=", loading, "user=", !!user, "usuario=", !!usuario, "isAdmin=", isAdmin);
+  console.log("[ProtectedRoute] Render: loading=", loading, "user=", !!user, "usuario=", !!usuario, "isAdmin=", permissions.isAdmin);
 
   if (loading) {
     console.log("[ProtectedRoute] Loading state...");
@@ -27,14 +28,8 @@ export function ProtectedRoute({ children, adminOnly = false }: ProtectedRoutePr
     return <Navigate to="/login" replace />;
   }
 
-  // If user is present but app-specific profile (usuario) is null, something went wrong fetching the profile.
-  // This could happen if RLS prevents fetching the profile, or if the profile simply doesn't exist.
-  // In this case, we should treat it as an unauthenticated state for the application.
   if (!usuario) {
     console.log("[ProtectedRoute] Supabase user found, but app profile (usuario) is null. Redirecting to login.");
-    // Adiciona um pequeno delay para garantir que o signOut tenha tempo de processar, se necessário
-    // ou para evitar um loop de redirecionamento rápido em caso de falha persistente do perfil.
-    // No entanto, o signOut já é tratado no Login.tsx para 'profile_missing'.
     return <Navigate to="/login?error=profile_missing" replace />;
   }
 
@@ -43,8 +38,15 @@ export function ProtectedRoute({ children, adminOnly = false }: ProtectedRoutePr
     return <Navigate to="/login?error=inactive" replace />;
   }
 
-  if (adminOnly && !isAdmin) {
+  // Verifica permissão de administrador
+  if (adminOnly && !permissions.isAdmin) {
     console.log("[ProtectedRoute] Admin-only route, but user is not admin. Redirecting to dashboard.");
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Verifica permissão específica, se fornecida
+  if (requiredPermission && !permissions[requiredPermission]) {
+    console.log(`[ProtectedRoute] User does not have required permission: ${String(requiredPermission)}. Redirecting to dashboard.`);
     return <Navigate to="/dashboard" replace />;
   }
 

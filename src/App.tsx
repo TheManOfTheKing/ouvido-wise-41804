@@ -14,7 +14,8 @@ import ManifestacaoDetalhes from "./pages/ManifestacaoDetalhes";
 import NotFound from "./pages/NotFound";
 import UsuariosPage from "./pages/Usuarios";
 import SetoresPage from "./pages/Setores";
-import { ThemeProvider } from "@/components/ThemeProvider"; // Importar ThemeProvider
+import ReportsPage from "./pages/ReportsPage"; // Importar ReportsPage
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,7 +32,7 @@ const queryClient = new QueryClient({
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="dark" attribute="class"> {/* Adicionado ThemeProvider aqui */}
+    <ThemeProvider defaultTheme="dark" attribute="class">
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -81,13 +82,21 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              <Route // Nova rota para Relatórios
+                path="/relatorios"
+                element={
+                  <ProtectedRoute requiredPermission="canViewReports"> {/* Usar requiredPermission */}
+                    <ReportsPage />
+                  </ProtectedRoute>
+                }
+              />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
-    </ThemeProvider> {/* Fechamento do ThemeProvider */}
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
