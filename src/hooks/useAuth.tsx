@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, useCallback, useRef } from "react";
+import { useState, useEffect, createContext, useContext, useCallback } from "react";
 import { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -28,7 +28,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true); // True inicialmente
   const navigate = useNavigate();
-  const isInitialCheckDoneRef = useRef(false);
 
   const fetchUserProfile = useCallback(async (authUser: User) => {
     console.log("[useAuth] fetchUserProfile: Iniciando busca do perfil para auth_id:", authUser.id);
@@ -66,8 +65,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return newProfile;
         } else {
           console.error("[useAuth] fetchUserProfile: Erro ao buscar perfil do usuário:", profileError);
-          // Importante: Se houver um erro ao buscar o perfil, retorne null
-          // Isso fará com que `setUsuario(null)` em handleAuthEvent, acionando o redirecionamento `profile_missing`.
           return null;
         }
       } else {
@@ -97,44 +94,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error("[useAuth] handleAuthEvent: Erro durante o processamento do evento de autenticação:", error);
-        // Se ocorrer um erro, garanta que o usuário e a sessão também sejam limpos para forçar a reautenticação
         newUser = null;
         newSession = null;
         newUsuario = null;
       } finally {
         if (isMounted) {
           setUser(newUser);
+          console.log("[useAuth] setUser chamado:", !!newUser);
           setSession(newSession);
+          console.log("[useAuth] setSession chamado:", !!newSession);
           setUsuario(newUsuario);
-          
-          // Garante que isLoadingAuth seja definido como false após a verificação inicial
-          if (!isInitialCheckDoneRef.current) {
-            setIsLoadingAuth(false);
-            isInitialCheckDoneRef.current = true;
-            console.log("[useAuth] Verificação inicial de autenticação concluída. Definindo isLoadingAuth como false.");
-          }
-          console.log(`[useAuth] Estado FINAL após handleAuthEvent (evento: ${event}): user=`, !!newUser, "session=", !!newSession, "usuario=", !!newUsuario, "isLoadingAuth=", isLoadingAuth);
+          console.log("[useAuth] setUsuario chamado:", !!newUsuario);
+          setIsLoadingAuth(false); // Garante que o loading seja definido como false
+          console.log(`[useAuth] Estado FINAL após handleAuthEvent (evento: ${event}): user=`, !!newUser, "session=", !!newSession, "usuario=", !!newUsuario, "isLoadingAuth=false");
         }
       }
     };
 
-    // Configura o listener de mudança de estado de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthEvent);
-
-    // Dispara uma verificação de sessão inicial manualmente
+    // Dispara uma verificação de sessão inicial e configura o listener
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      if (isMounted && !isInitialCheckDoneRef.current) {
+      if (isMounted) {
         console.log("[useAuth] getSession inicial concluído. Disparando handleAuthEvent para INITIAL_SESSION.");
         handleAuthEvent('INITIAL_SESSION', initialSession);
       }
     }).catch(err => {
       console.error("[useAuth] Erro durante o getSession inicial:", err);
-      if (isMounted && !isInitialCheckDoneRef.current) {
+      if (isMounted) {
         setIsLoadingAuth(false); // Garante que o estado de carregamento seja resolvido mesmo em caso de erro
-        isInitialCheckDoneRef.current = true;
         console.log("[useAuth] Erro no getSession inicial. Definindo isLoadingAuth como false.");
       }
     });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthEvent);
 
     return () => {
       isMounted = false;
@@ -160,7 +151,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsuario(null);
     setUser(null);
     setSession(null);
-    isInitialCheckDoneRef.current = false; 
 
     try {
       const { error } = await supabase.auth.signOut();
