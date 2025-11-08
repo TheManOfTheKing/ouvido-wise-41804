@@ -22,6 +22,10 @@ export default function Login() {
       toast.error("Conta inativa", {
         description: "Sua conta está inativa. Por favor, contate o administrador.",
       });
+    } else if (errorParam === "profile_missing") {
+      toast.error("Erro no perfil", {
+        description: "Não foi possível carregar seu perfil. Por favor, tente novamente ou contate o suporte.",
+      });
     }
   }, [searchParams]);
 

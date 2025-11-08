@@ -1,5 +1,5 @@
-import { useState, useEffect, createContext, useContext, useCallback } from "react"; // Import useCallback
-import { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
+import { useState, useEffect, createContext, useContext, useCallback } from "react";
+import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Tables } from "@/integrations/supabase/types";
@@ -29,7 +29,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Function to fetch user profile, memoized with useCallback
   const fetchUserProfile = useCallback(async (authUser: User) => {
     console.log("[useAuth] fetchUserProfile: Iniciando busca do perfil para auth_id:", authUser.id);
     try {
@@ -76,16 +75,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("[useAuth] fetchUserProfile: Erro ao carregar perfil do usuário:", error);
       return null;
     }
-  }, []); // No dependencies needed for useCallback as it only uses authUser and supabase client
+  }, []);
 
   useEffect(() => {
-    let isMounted = true; // Flag para evitar atualizações de estado em componentes desmontados
+    let isMounted = true;
 
+    const handleAuthChange = async (event: string, currentSession: Session | null) => {
+      console.log(`[useAuth] onAuthStateChange: Evento: ${event}, Sessão:`, currentSession);
+      if (!isMounted) return;
+
+      setLoading(true); // Start loading for any auth state change
+
+      try {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+
+        if (currentSession?.user) {
+          const fetchedUsuario = await fetchUserProfile(currentSession.user);
+          if (isMounted) {
+            setUsuario(fetchedUsuario);
+          }
+        } else {
+          setUsuario(null);
+        }
+      } catch (error) {
+        console.error("[useAuth] onAuthStateChange: Erro durante a mudança de estado de autenticação:", error);
+        if (isMounted) {
+          setUsuario(null);
+          setUser(null);
+          setSession(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+          console.log(`[useAuth] State after onAuthStateChange (event: ${event}): user=`, currentSession?.user ? 'present' : 'null', "session=", currentSession ? 'present' : 'null', "usuario=", usuario ? 'present' : 'null', "loading=", false);
+        }
+      }
+    };
+
+    // Initial session check
     const getInitialSession = async () => {
       console.log("[useAuth] getInitialSession: Tentando obter sessão inicial.");
+      setLoading(true); // Ensure loading is true during initial check
       try {
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-
         if (isMounted) {
           if (error) {
             console.error("[useAuth] getInitialSession: Erro ao obter sessão inicial:", error);
@@ -117,58 +150,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } finally {
         if (isMounted) {
           setLoading(false);
+          console.log("[useAuth] State after getInitialSession: user=", user ? 'present' : 'null', "session=", session ? 'present' : 'null', "usuario=", usuario ? 'present' : 'null', "loading=", false);
         }
       }
     };
 
-    getInitialSession(); // Chamar no mount para obter a sessão inicial
+    getInitialSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        console.log("[useAuth] onAuthStateChange: Evento:", event, "Sessão:", currentSession);
-        if (!isMounted) return; // Prevenir atualizações de estado se o componente foi desmontado
-
-        setLoading(true); // Definir loading como true para qualquer evento de mudança de estado de autenticação
-
-        try {
-          setSession(currentSession);
-          setUser(currentSession?.user ?? null);
-
-          if (currentSession?.user) {
-            const fetchedUsuario = await fetchUserProfile(currentSession.user);
-            if (isMounted) {
-              setUsuario(fetchedUsuario);
-            }
-          } else {
-            setUsuario(null);
-          }
-        } catch (error) {
-          console.error("[useAuth] onAuthStateChange: Erro durante a mudança de estado de autenticação:", error);
-          if (isMounted) {
-            setUsuario(null);
-            setUser(null);
-            setSession(null);
-          }
-        } finally {
-          if (isMounted) {
-            setLoading(false);
-          }
-        }
-      }
-    );
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
 
     return () => {
-      isMounted = false; // Limpar flag
+      isMounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchUserProfile]); // Add fetchUserProfile to dependencies
+  }, [fetchUserProfile]);
 
-  // Add a new useEffect to handle window focus events
   useEffect(() => {
     const handleFocus = async () => {
       console.log("[useAuth] Window focused. Explicitly checking session.");
-      // Calling getSession() will force Supabase to check its storage and potentially refresh the token.
-      // This action will trigger the onAuthStateChange listener if the session state changes.
+      // This will trigger onAuthStateChange if the session has changed or needs refreshing.
       await supabase.auth.getSession();
     };
 
@@ -177,12 +177,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
+  }, []);
 
   const signOut = async () => {
     console.log("[useAuth] signOut: Saindo do sistema.");
     await supabase.auth.signOut();
-    // Limpar estados imediatamente após signOut para refletir as mudanças na UI
     setUsuario(null);
     setUser(null);
     setSession(null);
