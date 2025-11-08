@@ -194,11 +194,11 @@ export default function PortalPublico() {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-12">
         {/* Modo Selection */}
-        <div className="mb-8 flex justify-center gap-4">
+        <div className="mb-8 flex flex-col sm:flex-row justify-center gap-4">
           <Button
             variant={modo === "registrar" ? "default" : "outline"}
             onClick={() => setModo("registrar")}
-            className="min-w-[180px]"
+            className="w-full"
           >
             <FileText className="mr-2 h-4 w-4" />
             Registrar Manifestação
@@ -206,7 +206,7 @@ export default function PortalPublico() {
           <Button
             variant={modo === "consultar" ? "default" : "outline"}
             onClick={() => setModo("consultar")}
-            className="min-w-[180px]"
+            className="w-full"
           >
             <Search className="mr-2 h-4 w-4" />
             Consultar Protocolo
