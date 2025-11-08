@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react"; // Import useCallback
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useSetores } from "@/hooks/useSetores";
@@ -12,21 +12,29 @@ interface ConfirmDeleteSectorModalProps {
 }
 
 export function ConfirmDeleteSectorModal({ open, onClose, sectorId, sectorName }: ConfirmDeleteSectorModalProps) {
-  const { mutate: deleteSetor, isDeleting } = useSetores();
+  const { deleteSetor, isDeleting } = useSetores();
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => { // Usando useCallback
     console.log("handleDelete called for sectorId:", sectorId);
-    deleteSetor(sectorId, {
-      onSuccess: () => {
-        console.log("deleteSetor onSuccess callback");
-        onClose();
-      },
-      onError: (error) => {
-        console.error("deleteSetor onError callback:", error);
-        // The useSetores hook already handles toast.error, so no need to duplicate here
-      }
-    });
-  };
+    console.log("Type of deleteSetor:", typeof deleteSetor); // Novo log
+    console.log("Value of deleteSetor:", deleteSetor); // Novo log
+
+    if (typeof deleteSetor === 'function') {
+      deleteSetor(sectorId, {
+        onSuccess: () => {
+          console.log("deleteSetor onSuccess callback");
+          onClose();
+        },
+        onError: (error) => {
+          console.error("deleteSetor onError callback:", error);
+        }
+      });
+    } else {
+      console.error("deleteSetor is not a function. Cannot proceed with deletion.");
+      // Opcionalmente, você pode adicionar um toast de erro aqui para o usuário
+      // toast.error("Erro interno: A função de exclusão não está disponível.");
+    }
+  }, [deleteSetor, sectorId, onClose]); // Adicionando dependências
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
