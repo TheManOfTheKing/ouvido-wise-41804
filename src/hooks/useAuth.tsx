@@ -30,25 +30,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true); // True enquanto a sessão inicial e o perfil estão sendo carregados
   const navigate = useNavigate();
 
-  // 1. Efeito para carregar a sessão inicial e o perfil na montagem do componente
+
+
+  // Efeito para lidar com mudanças de estado de autenticação em tempo real e carregamento inicial
   useEffect(() => {
     let isMounted = true;
 
+    // 1. Carrega a sessão inicial imediatamente
     const loadInitialSession = async () => {
       console.log("[useAuth] loadInitialSession: Tentando carregar sessão inicial.");
-      setIsLoadingAuth(true); // Garante que o loading esteja ativo no início
+      setIsLoadingAuth(true);
 
       try {
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-
-        if (sessionError) {
-          console.error("[useAuth] loadInitialSession: Erro ao obter sessão:", sessionError);
-          if (isMounted) {
-            setUser(null);
-            setSession(null);
-            setUsuario(null);
-          }
-        } else if (currentSession) {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (currentSession) {
           console.log("[useAuth] loadInitialSession: Sessão encontrada. Buscando perfil...");
           const currentUser = currentSession.user;
           const currentUsuario = await fetchUserProfile(currentUser);
@@ -61,19 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } else {
           console.log("[useAuth] loadInitialSession: Nenhuma sessão ativa encontrada.");
-          if (isMounted) {
-            setUser(null);
-            setSession(null);
-            setUsuario(null);
-          }
         }
       } catch (error) {
-        console.error("[useAuth] loadInitialSession: Erro inesperado:", error);
-        if (isMounted) {
-          setUser(null);
-          setSession(null);
-          setUsuario(null);
-        }
+        console.error("[useAuth] loadInitialSession: Erro inesperado no carregamento inicial:", error);
       } finally {
         if (isMounted) {
           setIsLoadingAuth(false); // Finaliza o estado de carregamento inicial
@@ -84,15 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     loadInitialSession();
 
-    return () => {
-      isMounted = false;
-    };
-  }, []); // Executa apenas uma vez na montagem
-
-  // 2. Efeito para lidar com mudanças de estado de autenticação em tempo real
-  useEffect(() => {
-    let isMounted = true;
-
+    // 2. Assina as mudanças de estado de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, currentSession: Session | null) => {
         console.log(`[useAuth] onAuthStateChange: Evento: ${event}, Sessão:`, currentSession ? 'present' : 'null');
@@ -101,7 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        setIsLoadingAuth(true); // Ativa o loading durante o processamento do evento
+        // Não ativamos o loading aqui para evitar flashes, já que o carregamento inicial já foi feito.
+        // Apenas atualizamos o estado.
 
         let newUsuario: Usuario | null = null;
         let newUser: User | null = currentSession?.user ?? null;
@@ -121,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(newUser);
             setSession(newSession);
             setUsuario(newUsuario);
-            setIsLoadingAuth(false); // Finaliza o loading após o processamento do evento
+            // Não mexemos no isLoadingAuth aqui, pois ele foi desativado no loadInitialSession
             console.log(`[useAuth] onAuthStateChange: Estado ATUALIZADO (evento: ${event}): user=`, !!newUser, "session=", !!newSession, "usuario=", !!newUsuario);
           }
         }
@@ -135,20 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []); // Dependência vazia para garantir que rode apenas uma vez
 
-  // 3. Efeito para re-verificar a sessão quando a janela é focada (para lidar com abas/minimizar)
-  useEffect(() => {
-    const handleFocus = async () => {
-      console.log("[useAuth] Janela focada. Re-verificando sessão.");
-      // Isso irá disparar onAuthStateChange se o estado da sessão tiver mudado
-      await supabase.auth.getSession();
-    };
 
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, []);
 
   const signOut = async () => {
     console.log("[useAuth] signOut: Iniciando processo de logout.");
@@ -164,14 +130,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       console.error("[useAuth] signOut: Erro inesperado durante o logout:", err);
     } finally {
-      // O onAuthStateChange deve lidar com a atualização final do estado e desativar o loading
-      // Mas para garantir uma UX rápida, podemos limpar o estado imediatamente
-      if (user || session || usuario) { // Só limpa se houver algo para limpar
-        setUser(null);
-        setSession(null);
-        setUsuario(null);
-        console.log("[useAuth] signOut: Estado local limpo.");
-      }
+      // O onAuthStateChange deve lidar com a atualização final do estado (que é o mais correto)
+      // No entanto, para garantir uma UX rápida, limpamos o estado local e redirecionamos.
+      // O onAuthStateChange será disparado e confirmará o estado de logout.
+      setUser(null);
+      setSession(null);
+      setUsuario(null);
+      console.log("[useAuth] signOut: Estado local limpo e redirecionando.");
       setIsLoadingAuth(false); // Garante que o loading seja desativado
       navigate("/login"); // Redireciona para a página de login
     }
