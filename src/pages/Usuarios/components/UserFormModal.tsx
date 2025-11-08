@@ -27,7 +27,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tables } from "@/integrations/supabase/types";
 import { useUsuarios } from "../hooks/useUsuarios";
-import { useSetores } from "@/hooks/useSetores"; // Caminho corrigido
+import { useSetores } from "@/hooks/useSetores";
+import { Eye, EyeOff, Lock } from "lucide-react";
+import { useState } from "react"; // Importar useState
 
 type Usuario = Tables<'usuarios'>;
 
@@ -35,9 +37,29 @@ const userFormSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("Email inválido"),
   perfil: z.enum(["ADMIN", "OUVIDOR", "GESTOR", "ASSISTENTE", "ANALISTA", "CONSULTA"]),
-  setor_id: z.string().optional().nullable(), // Adicionado .nullable() para permitir null
+  setor_id: z.string().optional().nullable(),
   cargo: z.string().min(1, "Cargo é obrigatório"),
-  telefone: z.string().optional().nullable(), // Adicionado .nullable() para permitir null
+  telefone: z.string().optional().nullable(),
+  password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres").optional(), // Optional for update
+  confirmPassword: z.string().optional(), // Optional for update
+}).superRefine((data, ctx) => {
+  // Only validate passwords if creating a new user (password field is present)
+  if (data.password !== undefined) {
+    if (!data.password) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "A senha é obrigatória para novos usuários",
+        path: ["password"],
+      });
+    }
+    if (data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "As senhas não coincidem",
+        path: ["confirmPassword"],
+      });
+    }
+  }
 });
 
 type UserFormData = z.infer<typeof userFormSchema>;
@@ -51,6 +73,7 @@ interface UserFormModalProps {
 export function UserFormModal({ open, onClose, usuario }: UserFormModalProps) {
   const { createUsuario, updateUsuario, isCreating, isUpdating } = useUsuarios();
   const { data: setores } = useSetores();
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userFormSchema),
@@ -59,8 +82,10 @@ export function UserFormModal({ open, onClose, usuario }: UserFormModalProps) {
       email: "",
       perfil: "ANALISTA",
       cargo: "",
-      telefone: null, // Definido como null para corresponder ao tipo nullable
-      setor_id: null, // Definido como null para corresponder ao tipo nullable
+      telefone: null,
+      setor_id: null,
+      password: "",
+      confirmPassword: "",
     },
   });
 
@@ -70,9 +95,11 @@ export function UserFormModal({ open, onClose, usuario }: UserFormModalProps) {
         nome: usuario.nome || "",
         email: usuario.email || "",
         perfil: usuario.perfil,
-        setor_id: usuario.setor_id || null, // Usar null em vez de undefined
+        setor_id: usuario.setor_id || null,
         cargo: usuario.cargo || "",
-        telefone: usuario.telefone || null, // Usar null em vez de undefined
+        telefone: usuario.telefone || null,
+        password: undefined, // Clear password fields for existing users
+        confirmPassword: undefined, // Clear password fields for existing users
       });
     } else {
       form.reset({
@@ -82,6 +109,8 @@ export function UserFormModal({ open, onClose, usuario }: UserFormModalProps) {
         cargo: "",
         telefone: null,
         setor_id: null,
+        password: "",
+        confirmPassword: "",
       });
     }
   }, [usuario, form]);
@@ -94,22 +123,21 @@ export function UserFormModal({ open, onClose, usuario }: UserFormModalProps) {
       cargo: formData.cargo,
       setor_id: formData.setor_id,
       telefone: formData.telefone,
-      auth_id: usuario?.auth_id || null, // Pode ser null para novos usuários
-      avatar: usuario?.avatar || null,
-      primeiro_acesso: usuario?.primeiro_acesso || null,
-      ultimo_acesso: usuario?.ultimo_acesso || null,
-      ativo: true,
-      updated_at: new Date().toISOString(),
-      // Removidos 'tema' e 'timezone' pois não existem na tabela 'usuarios'
+      ativo: usuario?.ativo ?? true, // Keep active status if editing, or set to true for new
     };
 
     if (usuario) {
+      // Update existing user
       await updateUsuario({
         id: usuario.id,
         ...baseData,
       });
     } else {
-      await createUsuario(baseData);
+      // Create new user
+      await createUsuario({
+        ...baseData,
+        password: formData.password!, // Password is required for new users by schema
+      });
     }
     onClose();
   };
@@ -150,6 +178,7 @@ export function UserFormModal({ open, onClose, usuario }: UserFormModalProps) {
                       placeholder="email@exemplo.com" 
                       type="email"
                       {...field} 
+                      disabled={!!usuario} // Disable email editing for existing users
                     />
                   </FormControl>
                   <FormMessage />
@@ -206,6 +235,7 @@ export function UserFormModal({ open, onClose, usuario }: UserFormModalProps) {
                       <SelectItem value="GESTOR">Gestor</SelectItem>
                       <SelectItem value="ASSISTENTE">Assistente</SelectItem>
                       <SelectItem value="ANALISTA">Analista</SelectItem>
+                      <SelectItem value="CONSULTA">Consulta</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -221,7 +251,7 @@ export function UserFormModal({ open, onClose, usuario }: UserFormModalProps) {
                   <FormLabel>Setor</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value || ""} // Usar string vazia para defaultValue de Select
+                    defaultValue={field.value || ""}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -240,6 +270,63 @@ export function UserFormModal({ open, onClose, usuario }: UserFormModalProps) {
                 </FormItem>
               )}
             />
+
+            {!usuario && ( // Show password fields only for new users
+              <>
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Senha</FormLabel>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <FormControl>
+                          <Input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            {...field}
+                            className="pl-10 pr-10"
+                          />
+                        </FormControl>
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirmar Senha</FormLabel>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <FormControl>
+                          <Input
+                            id="confirmPassword"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            {...field}
+                            className="pl-10"
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
 
             <div className="flex justify-end space-x-2 pt-4">
               <Button
