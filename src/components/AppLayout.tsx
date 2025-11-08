@@ -1,10 +1,11 @@
 import { ReactNode } from "react";
-import { LayoutDashboard, LogOut } from "lucide-react";
+import { LayoutDashboard, LogOut, BookOpen } from "lucide-react"; // Importar BookOpen
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { Link } from "react-router-dom";
-import { ThemeToggle } from "@/components/ThemeToggle"; // Importar ThemeToggle
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { usePermissions } from "@/hooks/usePermissions"; // Importar usePermissions
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -12,6 +13,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { usuario, signOut } = useAuth();
+  const { canViewManual } = usePermissions(); // Obter permissão para o manual
 
   return (
     <div className="min-h-screen bg-background">
@@ -23,9 +25,16 @@ export function AppLayout({ children }: AppLayoutProps) {
             <h1 className="text-xl font-bold">Sistema de Ouvidoria</h1>
           </Link>
           <div className="flex items-center gap-4">
-            <ThemeToggle /> {/* Adicionado ThemeToggle aqui */}
+            <ThemeToggle />
             <NotificationsDropdown />
-            <span className="text-sm text-muted-foreground hidden md:inline"> {/* Oculta em telas pequenas */}
+            {canViewManual && ( // Renderiza o link do manual se o usuário tiver permissão
+              <Link to="/manual">
+                <Button variant="ghost" size="icon" title="Manual do Usuário">
+                  <BookOpen className="h-5 w-5" />
+                </Button>
+              </Link>
+            )}
+            <span className="text-sm text-muted-foreground hidden md:inline">
               {usuario?.nome} <span className="text-primary">({usuario?.perfil})</span>
             </span>
             <Button variant="outline" size="sm" onClick={() => {
@@ -33,7 +42,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               signOut();
             }}>
               <LogOut className="mr-2 h-4 w-4" />
-              <span className="hidden md:inline">Sair</span> {/* Oculta texto em telas pequenas */}
+              <span className="hidden md:inline">Sair</span>
             </Button>
           </div>
         </div>

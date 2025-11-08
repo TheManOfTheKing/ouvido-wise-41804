@@ -15,7 +15,9 @@ import NotFound from "./pages/NotFound";
 import UsuariosPage from "./pages/Usuarios";
 import SetoresPage from "./pages/Setores";
 import ReportsPage from "./pages/ReportsPage";
-// import PrivacyPolicy from "./pages/PrivacyPolicy"; // Remover import
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import ManualPage from "./pages/Manual"; // Importar ManualPage
+import { ManualContentDisplay } from "./pages/Manual/components/ManualContentDisplay"; // Importar ManualContentDisplay
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 const queryClient = new QueryClient({
@@ -43,7 +45,7 @@ const App = () => (
               <Route path="/" element={<PortalPublico />} />
               <Route path="/login" element={<Login />} />
               <Route path="/registro" element={<Register />} />
-              {/* <Route path="/politica-de-privacidade" element={<PrivacyPolicy />} /> */} {/* Rota removida */}
+              <Route path="/politica-de-privacidade" element={<PrivacyPolicy />} />
               <Route
                 path="/dashboard"
                 element={
@@ -92,6 +94,17 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/manual"
+                element={
+                  <ProtectedRoute requiredPermission="canViewManual"> {/* Protegendo a rota do manual */}
+                    <ManualPage />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path=":topicPath" element={<ManualContentDisplay />} />
+                <Route index element={<Navigate to="bem-vindo" replace />} /> {/* Redireciona para o primeiro tópico */}
+              </Route>
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

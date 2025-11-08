@@ -9,10 +9,11 @@ export const usePermissions = () => {
       return {
         canViewDashboard: false,
         canManageUsers: false,
-        canManageSectors: false, // Adicionado
+        canManageSectors: false,
         canManageManifestations: false,
         canViewReports: false,
         canViewAuditLogs: false,
+        canViewManual: false, // Nova permissão
         isAdmin: false,
         isOuvidor: false,
       };
@@ -23,10 +24,11 @@ export const usePermissions = () => {
     return {
       canViewDashboard: true,
       canManageUsers: perfil === 'ADMIN',
-      canManageSectors: perfil === 'ADMIN', // Apenas ADMIN pode gerenciar setores
+      canManageSectors: perfil === 'ADMIN',
       canManageManifestations: ['ADMIN', 'OUVIDOR', 'GESTOR'].includes(perfil),
       canViewReports: ['ADMIN', 'OUVIDOR', 'GESTOR', 'COORDENADOR'].includes(perfil),
       canViewAuditLogs: perfil === 'ADMIN',
+      canViewManual: true, // Manual acessível a todos os usuários autenticados
       isAdmin: perfil === 'ADMIN',
       isOuvidor: perfil === 'OUVIDOR',
     };
