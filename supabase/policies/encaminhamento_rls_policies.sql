@@ -1,13 +1,9 @@
--- Enable RLS for tables if not already enabled (idempotent)
+-- Enable RLS for encaminhamentos table if not already enabled (idempotent)
 ALTER TABLE public.encaminhamentos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.notificacoes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.manifestacoes ENABLE ROW LEVEL SECURITY;
 
--- Drop existing policies that might conflict or be too restrictive for OUVIDOR on these actions
--- This ensures our new policies take precedence or are not blocked by older, more generic ones.
-DROP POLICY IF EXISTS "Ouvidor can insert encaminhamentos" ON public.encaminhamentos;
-DROP POLICY IF EXISTS "Ouvidor can update manifestation for forwarding" ON public.manifestacoes;
-DROP POLICY IF EXISTS "Ouvidor can insert notificacoes" ON public.notificacoes;
+-- Drop existing policies for encaminhamentos that might conflict
+DROP POLICY IF EXISTS "Ouvidor_Admin can insert encaminhamentos" ON public.encaminhamentos;
+DROP POLICY IF EXISTS "Allow authenticated read access to encaminhamentos" ON public.encaminhamentos;
 
 -- Policy for OUVIDOR or ADMIN to insert into encaminhamentos
 CREATE POLICY "Ouvidor_Admin can insert encaminhamentos" ON public.encaminhamentos
@@ -15,17 +11,15 @@ AS PERMISSIVE FOR INSERT
 TO authenticated
 WITH CHECK (public.is_ouvidor() OR public.is_admin());
 
--- Policy for OUVIDOR or ADMIN to update specific columns in manifestacoes during forwarding
--- This policy allows OUVIDOR/ADMIN to change the responsible sector, status, assigned user, and due date.
--- It also allows setting manifestante_id to null and anonima to true for sigilous/anonymous cases.
-CREATE POLICY "Ouvidor_Admin can update manifestation for forwarding" ON public.manifestacoes
-AS PERMISSIVE FOR UPDATE
+-- Policy to allow authenticated users to read encaminhamentos related to their sector or if they are admin/ouvidor
+CREATE POLICY "Allow authenticated read access to encaminhamentos" ON public.encaminhamentos
+AS PERMISSIVE FOR SELECT
 TO authenticated
-USING (public.is_ouvidor() OR public.is_admin())
-WITH CHECK (public.is_ouvidor() OR public.is_admin());
-
--- Policy for OUVIDOR or ADMIN to insert into notificacoes
-CREATE POLICY "Ouvidor_Admin can insert notificacoes" ON public.notificacoes
-AS PERMISSIVE FOR INSERT
-TO authenticated
-WITH CHECK (public.is_ouvidor() OR public.is_admin());
+USING (
+    public.is_admin() OR
+    public.is_ouvidor() OR
+    setor_origem_id = public.get_my_sector_id() OR
+    setor_destino_id = public.get_my_sector_id() OR
+    usuario_origem_id = public.get_my_user_id() OR
+    usuario_destino_id = public.get_my_user_id()
+);
