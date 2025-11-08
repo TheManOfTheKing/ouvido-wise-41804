@@ -1,8 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
-// Auth service for managing user authentication
-
 export interface AuthResult {
   user?: User | null;
   session?: Session | null;
@@ -20,38 +18,46 @@ export const authService = {
           emailRedirectTo: `${window.location.origin}/dashboard`,
           data: {
             nome,
-            perfil: perfil.toLowerCase() // Convert to lowercase for app_role enum
+            perfil: perfil.toLowerCase()
           }
         }
       });
 
       if (error) {
+        console.error("[authService] Erro no signUp:", error);
         return { error: error.message };
       }
 
+      console.log("[authService] SignUp bem-sucedido");
       return { user: data.user, session: data.session };
     } catch (err: any) {
+      console.error("[authService] Erro inesperado no signUp:", err);
       return { error: err.message || "Erro ao criar conta" };
     }
   },
 
   // Sign in
-    async signIn(email: string, password: string): Promise<AuthResult> {
-    // Removido o signOut() daqui, pois o signInWithPassword já gerencia a sessão existente.
-    // await supabase.auth.signOut(); 
-
+  async signIn(email: string, password: string): Promise<AuthResult> {
     try {
+      // CRÍTICO: Remove qualquer sessão antiga antes de fazer login
+      await supabase.auth.signOut();
+      
+      console.log("[authService] Tentando login para:", email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (error) {
+        console.error("[authService] Erro no signIn:", error);
         return { error: error.message };
       }
 
+      console.log("[authService] SignIn bem-sucedido");
       return { user: data.user, session: data.session };
     } catch (err: any) {
+      console.error("[authService] Erro inesperado no signIn:", err);
       return { error: err.message || "Erro ao fazer login" };
     }
   },
@@ -59,14 +65,19 @@ export const authService = {
   // Sign out
   async signOut(): Promise<{ error?: string }> {
     try {
+      console.log("[authService] Executando signOut");
+      
       const { error } = await supabase.auth.signOut();
       
       if (error) {
+        console.error("[authService] Erro no signOut:", error);
         return { error: error.message };
       }
 
+      console.log("[authService] SignOut bem-sucedido");
       return {};
     } catch (err: any) {
+      console.error("[authService] Erro inesperado no signOut:", err);
       return { error: err.message || "Erro ao sair" };
     }
   },
@@ -77,11 +88,13 @@ export const authService = {
       const { data, error } = await supabase.auth.getSession();
       
       if (error) {
+        console.error("[authService] Erro ao obter sessão:", error);
         return { session: null, error: error.message };
       }
 
       return { session: data.session };
     } catch (err: any) {
+      console.error("[authService] Erro inesperado ao obter sessão:", err);
       return { session: null, error: err.message };
     }
   },
@@ -94,11 +107,14 @@ export const authService = {
       });
 
       if (error) {
+        console.error("[authService] Erro no resetPassword:", error);
         return { error: error.message };
       }
 
+      console.log("[authService] Email de recuperação enviado");
       return {};
     } catch (err: any) {
+      console.error("[authService] Erro inesperado no resetPassword:", err);
       return { error: err.message || "Erro ao enviar email de recuperação" };
     }
   },
@@ -111,11 +127,14 @@ export const authService = {
       });
 
       if (error) {
+        console.error("[authService] Erro no updatePassword:", error);
         return { error: error.message };
       }
 
+      console.log("[authService] Senha atualizada com sucesso");
       return {};
     } catch (err: any) {
+      console.error("[authService] Erro inesperado no updatePassword:", err);
       return { error: err.message || "Erro ao atualizar senha" };
     }
   }
@@ -123,15 +142,28 @@ export const authService = {
 
 // Get current user profile
 export async function getCurrentUser() {
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) return null;
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.log("[getCurrentUser] Nenhum usuário autenticado");
+      return null;
+    }
 
-  const { data: profile } = await supabase
-    .from("usuarios")
-    .select("*")
-    .eq("auth_id", user.id)
-    .single();
+    const { data: profile, error: profileError } = await supabase
+      .from("usuarios")
+      .select("*")
+      .eq("auth_id", user.id)
+      .single();
 
-  return profile;
+    if (profileError) {
+      console.error("[getCurrentUser] Erro ao buscar perfil:", profileError);
+      return null;
+    }
+
+    return profile;
+  } catch (error) {
+    console.error("[getCurrentUser] Erro inesperado:", error);
+    return null;
+  }
 }
