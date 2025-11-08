@@ -157,14 +157,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     console.log("[useAuth] signOut: Saindo do sistema.");
-    await supabase.auth.signOut();
+    // Limpa o estado local imediatamente para que o ProtectedRoute redirecione
     setUsuario(null);
     setUser(null);
     setSession(null);
-    setIsLoadingAuth(true); // Redefine o estado de carregamento para o próximo login
-    isInitialCheckDoneRef.current = false; // Redefine a ref
-    console.log("[useAuth] signOut: Redirecionando para /login."); // Log para depuração
-    navigate("/login");
+    isInitialCheckDoneRef.current = false; // Redefine para a próxima carga completa do app
+
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("[useAuth] signOut: Erro ao fazer logout no Supabase:", error);
+        // Opcional: mostrar um toast de erro aqui se o logout do Supabase falhou
+        // toast.error("Erro ao sair do sistema. Tente novamente.");
+      } else {
+        console.log("[useAuth] signOut: Logout do Supabase bem-sucedido.");
+      }
+    } catch (err: any) {
+      console.error("[useAuth] signOut: Erro inesperado durante o logout:", err);
+      // Opcional: mostrar um toast de erro para erros inesperados
+      // toast.error("Erro inesperado ao sair do sistema.");
+    } finally {
+      console.log("[useAuth] signOut: Redirecionando para /login.");
+      navigate("/login"); // Garante o redirecionamento
+    }
   };
 
   return (
