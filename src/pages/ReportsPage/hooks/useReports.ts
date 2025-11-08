@@ -1,10 +1,27 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, startOfDay, endOfDay } from "date-fns";
+import { Enums } from "@/integrations/supabase/types"; // Import Enums para tipagem
 
 interface ReportFilters {
   startDate: Date;
   endDate: Date;
+}
+
+// Definir tipos para os valores de retorno das funções RPC
+interface ManifestacoesByType {
+  tipo: Enums<'tipo_manifestacao'>;
+  count: number;
+}
+
+interface ManifestacoesByStatus {
+  status: Enums<'status_manifestacao'>;
+  count: number;
+}
+
+interface ManifestacoesOverTime {
+  date: string; // O tipo 'date' do postgres será string em JS
+  count: number;
 }
 
 export function useReports(filters: ReportFilters) {
@@ -14,34 +31,33 @@ export function useReports(filters: ReportFilters) {
       const start = format(startOfDay(filters.startDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
       const end = format(endOfDay(filters.endDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
 
-      // Manifestações por Tipo
+      // Manifestações por Tipo (usando RPC)
       const { data: byType, error: typeError } = await supabase
-        .from("manifestacoes")
-        .select("tipo, count") // O agrupamento por 'tipo' é implícito com 'count'
-        .gte("created_at", start)
-        .lte("created_at", end)
-        .order("count", { ascending: false })
-        .returns<{ tipo: string; count: number }[]>();
+        .rpc("get_manifestacoes_by_type", {
+          start_date_param: start,
+          end_date_param: end,
+        })
+        .returns<ManifestacoesByType[]>();
 
       if (typeError) throw typeError;
 
-      // Manifestações por Status
+      // Manifestações por Status (usando RPC)
       const { data: byStatus, error: statusError } = await supabase
-        .from("manifestacoes")
-        .select("status, count") // O agrupamento por 'status' é implícito com 'count'
-        .gte("created_at", start)
-        .lte("created_at", end)
-        .order("count", { ascending: false })
-        .returns<{ status: string; count: number }[]>();
+        .rpc("get_manifestacoes_by_status", {
+          start_date_param: start,
+          end_date_param: end,
+        })
+        .returns<ManifestacoesByStatus[]>();
 
       if (statusError) throw statusError;
 
-      // Manifestações ao Longo do Tempo (por dia)
+      // Manifestações ao Longo do Tempo (por dia) (já usando RPC)
       const { data: overTime, error: overTimeError } = await supabase
         .rpc("get_manifestacoes_by_day", {
           start_date: start,
           end_date: end,
-        });
+        })
+        .returns<ManifestacoesOverTime[]>();
 
       if (overTimeError) throw overTimeError;
 
@@ -51,6 +67,6 @@ export function useReports(filters: ReportFilters) {
         overTime: overTime || [],
       };
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutos
   });
 }
