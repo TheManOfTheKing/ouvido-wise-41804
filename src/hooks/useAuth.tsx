@@ -163,6 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setIsLoadingAuth(true); // Redefine o estado de carregamento para o próximo login
     isInitialCheckDoneRef.current = false; // Redefine a ref
+    console.log("[useAuth] signOut: Redirecionando para /login."); // Log para depuração
     navigate("/login");
   };
 

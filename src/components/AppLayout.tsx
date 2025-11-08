@@ -26,7 +26,10 @@ export function AppLayout({ children }: AppLayoutProps) {
             <span className="text-sm text-muted-foreground">
               {usuario?.nome} <span className="text-primary">({usuario?.perfil})</span>
             </span>
-            <Button variant="outline" size="sm" onClick={signOut}>
+            <Button variant="outline" size="sm" onClick={() => {
+              console.log("[AppLayout] Botão Sair clicado."); // Log para depuração
+              signOut();
+            }}>
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </Button>
